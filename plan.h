@@ -13,7 +13,7 @@ using namespace std;
 class Plan
 {
   protected:
-    int LOOKAHEAD = 100, Collision_cost = 200, decay = 20;
+    int LOOKAHEAD = 10, Collision_cost = 200, decay = 20;
     int boardw, boardh, startTime;
     double sqrt2 = 1.41421356237;
     float *htable;
