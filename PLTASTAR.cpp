@@ -38,6 +38,7 @@ int PLTASTAR::ASTAR(State requestStart)
 
     start->cost_d = 0;
     start->cost_s = 0;
+    start->depth = 0;
     start->h_s = h_value_static(start);
 
     int expansions = 0;
@@ -77,6 +78,7 @@ int PLTASTAR::ASTAR(State requestStart)
                         child_state->cost_s = scost;
                         child_state->cost_d = dcost;
                         child_state->parent = state;
+                        child_state->depth = state->depth + 1;
 
                         //cerr << "Expand: " << child_state->x << " " << child_state->y << " " << child_state->cost_s << " " << child_state->cost_d << " " << child_state->h_s << " " << child_state->h_d << " " << child_state->time << endl;
 
@@ -272,11 +274,13 @@ State_PLRTA *PLTASTAR::pickBest()
         goalQ.push(open.pop());
     }
 
-    State_PLRTA *s = goalQ.top();
-    while (!goalQ.empty())
+    State_PLRTA *s = NULL;
+    do
     {
+        if(!s || s->depth < goalQ.top()->depth)
+            s = goalQ.top();
         open.push(goalQ.pop());
-    }
+    } while (!goalQ.empty());
 
     return s;
 }

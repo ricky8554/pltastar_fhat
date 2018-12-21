@@ -35,6 +35,7 @@ int Lss_Lrta_Fhat::ASTAR(State requestStart)
     close.clear();
 
     start->cost = 0;
+    start->depth = 0;
 
     int expansions = 0;
     //push start into open open check & expand state
@@ -73,6 +74,7 @@ int Lss_Lrta_Fhat::ASTAR(State requestStart)
                     {
                         child_state->cost = next_cost;
                         child_state->parent = state;
+                        child_state->depth = state->depth + 1;
                         child_state->h_error = herr * (child_state->derr / (1 - derr));
 
                         if (!best_child || best_child->f() > child_state->f())
@@ -165,12 +167,13 @@ State_LSS_FHAT *Lss_Lrta_Fhat::pickBest()
 
     open.setUpCompare(&compare1);
 
-    State_LSS_FHAT *s = goalQ.top();
-
-    while (!goalQ.empty())
+    State_LSS_FHAT *s = NULL;
+    do
     {
+        if(!s || s->depth < goalQ.top()->depth)
+            s = goalQ.top();
         open.push(goalQ.pop());
-    }
+    } while (!goalQ.empty());
 
     return s;
 }

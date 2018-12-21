@@ -37,6 +37,7 @@ int Lss_Lrta::ASTAR(State requestStart)
     close.clear();
 
     start->cost = 0;
+    start->depth = 0;
 
     int expansions = 0;
     //push start into open open check & expand state
@@ -71,6 +72,7 @@ int Lss_Lrta::ASTAR(State requestStart)
                     {
                         child_state->cost = next_cost;
                         child_state->parent = state;
+                        child_state->depth = state->depth + 1;
                         if (!opencheck.find(child_state))
                         {
                             opencheck.insert(child_state);
@@ -139,13 +141,13 @@ State_LSS *Lss_Lrta::pickBest()
     }
 
     open.setUpCompare(&compare1);
-
-    State_LSS *s = goalQ.top();
-
-    while (!goalQ.empty())
+    State_LSS *s = NULL;
+    do
     {
+        if(!s || s->depth < goalQ.top()->depth)
+            s = goalQ.top();
         open.push(goalQ.pop());
-    }
+    } while (!goalQ.empty());
 
     return s;
 }
@@ -164,14 +166,6 @@ int Lss_Lrta::plan(State requestStart)
     //std::cout << "CHOSE: " << sgoal->x << "\t" << sgoal->y << "\t" << sgoal->cost << "\t" << sgoal->h << "\t" << sgoal->f() << endl;
     update_h();
     
-    
-    // path = vector<State>();
-    // path.push_back(*s);
-    // while (s != start)
-    // {
-    //     path[0] = (*s);
-    //     s = s->parent;
-    // }
     path = vector<State>();
     while (s != start)
     {

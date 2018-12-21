@@ -7,9 +7,18 @@ using namespace std;
 
 int PLTASTAR_FHAT::ASTAR(State requestStart)
 {
+    
+    
     State_PLRTA_FHAT *state;
     dummy->set(requestStart);
     start = expandState[dummy];
+    // printHtable(start->x,start->y);
+    // cerr << "=================HHHHHH" << endl << endl;
+    // printDerrtable(start->x,start->y);
+    // cerr << "=================DDDDDD" << endl << endl;
+    // debug.clear();
+    // debug1.clear();
+    // debugstart = requestStart;
 
     auto it = expandState.begin();
 
@@ -41,6 +50,7 @@ int PLTASTAR_FHAT::ASTAR(State requestStart)
 
     start->cost_d = 0;
     start->cost_s = 0;
+    start->depth = 0;
     start->h_s = h_value_static(start);
     start->derr = getDerr(start);
     start->d = getD(start);
@@ -53,11 +63,15 @@ int PLTASTAR_FHAT::ASTAR(State requestStart)
     do
     {
         state = open.pop();
+        
         opencheck.erase(state);
         close.insert(state);
         expansions += 1;
         State_PLRTA_FHAT *best_child = NULL;
         //cerr << "Pick: " << state->x << " " << state->y << " " << state->time<< " " << state->cost_s << " " << state->cost_d << " " << state->h_s << " " << state->h_d << " " << state->h_error << " "<< state->fhat()  << endl;
+
+        debug.emplace(state->x,state->y);
+
 
         for (int i = -1; i <= 1; i++)
         {
@@ -85,6 +99,7 @@ int PLTASTAR_FHAT::ASTAR(State requestStart)
                         child_state->cost_s = scost;
                         child_state->cost_d = dcost;
                         child_state->parent = state;
+                        child_state->depth = state->depth + 1;
                         child_state->h_error = herr * (child_state->derr / (1 - derr));
                         if (!best_child || best_child->f() > child_state->f())
                             best_child = child_state;
@@ -92,6 +107,7 @@ int PLTASTAR_FHAT::ASTAR(State requestStart)
 
                         if (!opencheck.find(child_state))
                         {
+                            debug1.emplace(child_state->x,child_state->y);
                             opencheck.insert(child_state);
                             open.push(child_state);
                         }
@@ -319,11 +335,13 @@ State_PLRTA_FHAT *PLTASTAR_FHAT::pickBest()
         goalQ.push(open.pop());
     }
 
-    State_PLRTA_FHAT *s = goalQ.top();
-    while (!goalQ.empty())
+    State_PLRTA_FHAT *s = NULL;
+    do
     {
+        if(!s || s->depth < goalQ.top()->depth)
+            s = goalQ.top();
         open.push(goalQ.pop());
-    }
+    } while (!goalQ.empty());
 
     return s;
 }

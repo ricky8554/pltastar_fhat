@@ -104,6 +104,7 @@ void setObstacles(int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
+    int lookahead[5] = {1,3,10,30,100};
     setObstacles(argc, argv);
     vector<DynamicObstacle> dobs = obstacle.getDynamicObstacle1();
     for (int k = 100; k <= 1000000; k *= 10)
@@ -111,13 +112,12 @@ int main(int argc, char *argv[])
         for (int i = 0; i < 4; i++)
         {
             obstacle.setMode(i);
-            for (int j = 1; j <= 10000; j *= 10)
+            for (int j = 0; j < 5; j++)
             {
                 obstacle.setDynamicObstacle(dobs);
                 obstacle.setStartPoint(start.x, start.y);
                 obstacle.setGoalPoint(goal.x, goal.y);
-                cerr << "Algorithm: " << i << " LookAhead " << j << " Allow " << k << " movements" << " cost " << obstacle.MoveObstacle(k, j) << endl;
-                ;
+                cerr << "Algorithm: " << i << " LookAhead " << lookahead[j] << " Allow " << k << " movements" << " cost " << obstacle.MoveObstacle(k, lookahead[j]) << endl;
             }
         }
     }

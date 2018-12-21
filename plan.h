@@ -7,6 +7,7 @@
 #include "state.h"
 #include <queue>
 #include <cfloat>
+#include <iomanip>
 
 using namespace std;
 
@@ -25,10 +26,15 @@ class Plan
     StaticObstacle dummy_static_obs;
     vector<State> path;
 
+    unordered_set<point> debug;
+    unordered_set<point> debug1;
+    State debugstart = State(-1,-1);
+
     //pltastar
     float *htable_static;
     //fhat
-    double * dtable, *derrtable;
+    double *dtable, *derrtable;
+
   public:
     // Default constructor
     Plan()
@@ -80,12 +86,11 @@ class Plan
       public:
         bool operator()(State s, State s1)
         {
-            return s.fakeh < s1.fakeh;
+            return s.fakeh > s1.fakeh;
         }
     };
 
     //FHAT
-    
 
     double getDistance(int x, int y)
     {
@@ -95,7 +100,7 @@ class Plan
 
     double getDistance(State *s)
     {
-        return getDistance(s->x,s->y);
+        return getDistance(s->x, s->y);
     }
 
     //PLTASTAR
@@ -230,8 +235,8 @@ class Plan
         }
 
         htable[getindex(goal.x, goal.y)] = goal.fakeh = 0;
-        q.push(goal);
 
+        q.push(goal);
         while (!q.empty())
         {
             State state = q.top();
@@ -252,13 +257,140 @@ class Plan
                         htable[newindex] = newstate.fakeh;
                         q.push(newstate);
                     }
-                    dtable[index] = derrtable[index] = getDistance(j, i);
                 }
             }
+        }
+        for (int i = 0; i < boardsize; i++)
+        {
+            int x = i % boardw, y = i / boardw;
+            // float a = abs(x - goal.x), b = abs(y - goal.y);
+            // htable[i] = (a > b) ? a : b;
+            if (ccheck(x, y))
+                dtable[i] = derrtable[i] = getDistance(x, y);
+            else
+                dtable[i] = derrtable[i] = FLT_MAX;
         }
 
         htable_static = new float[boardw * boardh];
         memcpy(htable_static, htable, sizeof(float) * boardw * boardh);
+    }
+
+    void printHtable(int x, int y)
+    {
+        std::cerr << std::setprecision(0) << std::fixed;
+        for (int i = boardh - 1; i >= 0; i--)
+        {
+            for (int j = 0; j < boardw; j++)
+            {
+                if(x == j && y == i)
+                    cerr << "\033[0;31m";
+                else if(debugstart.x == j && debugstart.y == i)
+                    cerr << "\033[0;34m";
+                else if(debug.find(point(j,i)) != debug.end())
+                    cerr << "\033[0;32m";
+                else if(debug1.find(point(j,i)) != debug.end())
+                    cerr << "\033[0;33m";
+                else
+                    cerr << "\033[0;30m";
+                int index = getindex(j, i);
+                if (htable[index] > 1000)
+                {
+                    cerr << "-01 ";
+                }
+                else if (htable[index] < 10)
+                {
+                    cerr << "00" << htable[index] << " ";
+                }
+                else if (htable[index] < 100)
+                {
+                    cerr << 0 << htable[index] << " ";
+                }
+                else
+                {
+                    cerr << htable[index] << " ";
+                }
+            }
+            cerr << endl;
+        }
+    }
+
+    void printDtable(int x, int y)
+    {
+        std::cerr << std::setprecision(0) << std::fixed;
+        for (int i = boardh - 1; i >= 0; i--)
+        {
+            for (int j = 0; j < boardw; j++)
+            {
+                if(x == j && y == i)
+                    cerr << "\033[0;31m";
+                else if(debugstart.x == j && debugstart.y == i)
+                    cerr << "\033[0;34m";
+                else if(debug.find(point(j,i)) != debug.end())
+                    cerr << "\033[0;32m";
+                else if(debug1.find(point(j,i)) != debug.end())
+                    cerr << "\033[0;33m";
+                else
+                    cerr << "\033[0;30m";
+                int index = getindex(j, i);
+                if (dtable[index] > 1000)
+                {
+                    cerr << "-01 ";
+                }
+                else if (dtable[index] < 10)
+                {
+                    cerr << "00" << dtable[index] << " ";
+                }
+                else if (dtable[index] < 100)
+                {
+                    cerr << 0 << dtable[index] << " ";
+                }
+                else
+                {
+                    cerr << dtable[index] << " ";
+                }
+            }
+            cerr << endl;
+        }
+    }
+
+    void printDerrtable(int x, int y)
+    {
+        std::cerr << std::setprecision(0) << std::fixed;
+        for (int i = boardh - 1; i >= 0; i--)
+        {
+            for (int j = 0; j < boardw; j++)
+            {
+                if(x == j && y == i)
+                    cerr << "\033[0;31m";
+                else if(debugstart.x == j && debugstart.y == i)
+                    cerr << "\033[0;34m";
+                else if(debug.find(point(j,i)) != debug.end())
+                    cerr << "\033[0;32m";
+                else if(debug1.find(point(j,i)) != debug.end())
+                    cerr << "\033[0;33m";
+                else
+                    cerr << "\033[0;30m";
+                int index = getindex(j, i);
+                if (derrtable[index] > 1000)
+                {
+                    cerr << "-01"
+                         << " ";
+                }
+                else if (derrtable[index] < 10)
+                {
+                    cerr << "00" << derrtable[index] << " ";
+                }
+                else if (derrtable[index] < 100)
+                {
+                    cerr << 0 << derrtable[index] << " ";
+                }
+                else
+                {
+                    cerr << derrtable[index] << " ";
+                }
+            }
+            cerr << endl;
+        }
     }
 
     // void PLTASTAR_FHAT::constructHtable()
@@ -279,6 +411,15 @@ class Plan
     //         {
     //             int index = getindex(j, i);
     //             float a = abs(j - goal->x), b = abs(i - goal->y);
+    //             if (ccheck(x, y))
+    //             {
+    //                 htable[index] = (a > b) ? a : b;
+    //                 dtable[i] = derrtable[i] = getDistance(x, y);
+    //             }
+    //             else
+    //             {
+    //                 dtable[i] = derrtable[i] = htable[index] = FLT_MAX;
+    //             }
     //             htable[index] = (a > b) ? a : b;
     //             dtable[index] = derrtable[index] = getDistance(j, i);
     //         }

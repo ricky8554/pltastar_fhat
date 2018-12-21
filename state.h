@@ -58,7 +58,7 @@ struct hash<point_t>
 class State
 {
   public:
-    int x, y,qindex;
+    int x, y,qindex,depth;
     mutable int time;
     double fakeh,fakec;
     std::unordered_set<point_t> pred;
