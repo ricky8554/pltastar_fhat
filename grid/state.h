@@ -211,7 +211,6 @@ struct hash<State>
     }
     size_t operator()(const State &c) const
     {
-        return c.time;
         static hash<int> hashf;
         size_t ret = 0;
         ret ^= hashf(c.x) + 0x9e3779b9 + (ret << 6) + (ret >> 2);

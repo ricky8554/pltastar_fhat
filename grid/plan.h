@@ -96,7 +96,6 @@ class Plan
             dynamicObstacles = d;
 
         int MAX = LOOKAHEAD + startTime;
-        cout << "=========================================== " << MAX << " " << startDynamic << " " << startTime<< endl;
         for (int i = startDynamic; i <= MAX; ++i)
         {
             for (DynamicObstacle &dynamic : dynamicObstacles)
@@ -105,57 +104,8 @@ class Plan
                 dynamicObstacles_map.insert(dynamic);
             }
         }
-
-        for(DynamicObstacle dy: dynamicObstacles_map)
-        {
-            cout << dy.t << " " << dy.x << " " << dy.y << endl;
-        }
-        
-
         startDynamic = MAX + 1;
-
         
-
-        // dynamicObstacles = d;
-
-        // for (int i = 0; i < dynamicObstacles.size(); i++)
-        // {
-        //     int x = dynamicObstacles[i].x, y = dynamicObstacles[i].y;
-        //     int x1 = x;
-
-        //     if (x1 == boardw - 1)
-        //     {
-        //         dynamicObstacles[i].right = boardw - 1;
-        //     }
-        //     else
-        //     {
-        //         dummy_static_obs.set(x1, y);
-        //         while (staticObstacles.find(dummy_static_obs) == staticObstacles.end() && x1 <= boardw - 1)
-        //         {
-        //             x1 += 1;
-        //             dummy_static_obs.set(x1, y);
-        //         }
-
-        //         dynamicObstacles[i].right = x1 - 1;
-        //     }
-
-        //     x1 = x;
-
-        //     if (x1 == 0)
-        //     {
-        //         dynamicObstacles[i].left = 0;
-        //     }
-        //     else
-        //     {
-        //         dummy_static_obs.set(x1, y);
-        //         while (staticObstacles.find(dummy_static_obs) == staticObstacles.end() && x1 >= 0)
-        //         {
-        //             x1 -= 1;
-        //             dummy_static_obs.set(x1, y);
-        //         }
-        //         dynamicObstacles[i].left = x1 + 1;
-        //     }
-        // }
     };
 
     virtual unordered_set<State> getSTATE()
