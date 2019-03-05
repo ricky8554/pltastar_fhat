@@ -87,6 +87,20 @@ class State_PLRTA : public State
     {
         return sqrt((x - d.x) * (x - d.x) + (y - d.y) * (y - d.y));
     }
+
+    friend ostream &operator<<(ostream &os, const State_PLRTA &state)
+    {
+        os << "X:" << setw(3) << left << state.x
+           << "Y:" << setw(3) << left << state.y
+           << "G:" << setw(3) << left << state.cost_s
+           << "H:" << setw(3) << left << state.h_s
+           << "g:" << setw(3) << left << state.cost_d
+           << "h:" << setw(3) << left << state.h_d
+           << "F:" << setw(3) << left << state.f()
+           << "T:" << setw(4) << left << state.time
+           << "D:" << state.depth;
+        return os;
+    }
 };
 
 struct State_PLRTA_Static : public State_PLRTA
@@ -171,7 +185,7 @@ class PLTASTAR : public Plan
 
     void setStatic(unordered_set<StaticObstacle> &s) override;
 
-    void setDynamic(vector<DynamicObstacle> &d) override;
+    // void setDynamic(vector<DynamicObstacle> &d) override;
 
     unordered_set<State> getSTATE() override
     {
@@ -198,7 +212,7 @@ class PLTASTAR : public Plan
     mutex mtx;
 
   private:
-    State_PLRTA *start, *goal, *dummy;
+    State_PLRTA *start, *goal, *dummy, *touch_goal = NULL;
     State_PLRTA_Static* dummy_static;
     PQueue<State_PLRTA *> open;
     PQueue<State_PLRTA *> goalQ;

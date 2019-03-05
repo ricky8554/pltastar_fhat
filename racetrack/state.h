@@ -4,33 +4,39 @@
 #include <cmath>
 #include <iostream>
 #include <unordered_set>
+#include <vector>
 
 struct point_t
 {
     int x;
     int y;
+    int dx;
+    int dy;
     int time;
 
-    point_t(int x1, int y1, int t1)
+    point_t(int x1, int y1, int dx1, int dy1, int t1)
     {
         x = x1;
         y = y1;
+        dx = dx1;
+        dy = dy1;
         time = t1;
     };
     point_t(){};
 
     bool operator==(const point_t &s) const
     {
-        if (x == s.x && y == s.y && time == s.time)
+        if (x == s.x && y == s.y && dx == s.dx && dy == s.dy && time == s.time)
             return true;
         return false;
     }
 
-
-    void set(int x1, int y1)
+    void set(int x1, int y1, int dx1, int dy1)
     {
         x = x1;
         y = y1;
+        dx = dx1;
+        dy = dy1;
     }
 };
 
@@ -46,43 +52,45 @@ struct hash<point_t>
     {
         static hash<int> hashf;
         size_t ret = 0;
-        ret^= hashf(c.x) + 0x9e3779b9 + (ret<< 6) + (ret>> 2);
-        ret^= hashf(c.y) + 0x9e3779b9 + (ret<< 6) + (ret>> 2);
-        ret^= hashf(c.time) + 0x9e3779b9 + (ret<< 6) + (ret>> 2);
+        ret ^= hashf(c.x) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(c.y) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(c.dx) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(c.dy) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(c.time) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         return ret;
     }
 };
-} 
-
+} // namespace std
 
 class State
 {
   public:
-    int x, y,qindex,depth;
+    int x, y, dx, dy, qindex, depth;
     mutable int time;
-    double fakeh,fakec;
+    double fakeh, fakec;
     std::unordered_set<point_t> pred;
 
-    State(double x, double y)
-        : x(x), y(y), time(0){};
-    State(double x, double y, int time)
-        : x(x), y(y), time(time){};
-    State(double x, double y, int time,std::unordered_set<point_t> pred)
-        : x(x), y(y), time(time), pred(pred){};
+    State(int x, int y, int dx, int dy)
+        : x(x), y(y), dx(dx), dy(dy), time(0){};
+    State(int x, int y, int dx, int dy, int time)
+        : x(x), y(y), dx(dx), dy(dy), time(time){};
+    State(double x, double y, int dx, int dy, int time, std::unordered_set<point_t> pred)
+        : x(x), y(y), dx(dx), dy(dy), time(time), pred(pred){};
 
     State()
-        : x(-1), y(-1), time(0){};
+        : x(-1), y(-1), dx(-1), dy(-1), time(0){};
 
-    virtual ~State() {};
+    virtual ~State(){};
 
     bool operator==(const State &s) const
     {
-        if (x == s.x && y == s.y && this->time == s.time)
+        if (x == s.x && y == s.y && dx == s.dx && dy == s.dy && this->time == s.time)
             return true;
         return false;
     }
 
-    virtual const double f() const{
+    virtual const double f() const
+    {
         return fakeh + fakec;
     };
 };
@@ -100,20 +108,38 @@ struct Dynamicxy
     }
 };
 
+struct movement
+{
+    
+    double heading, speed;
+    int steps;
+    movement()
+        : heading(0),speed(0),steps(0){};
+
+    movement(int heading, int speed, int step)
+        : heading(heading),speed(speed),steps(step){};
+};
+
 struct DynamicObstacle
 {
-    double maxspeed, minspeed, radius, x, y, angle;
-    double left,right;
+    std::vector<movement> instructions;
+    double x, y, estimate_h, estimate_s;
+    double heading, speed;
+    int remain;
+    int current;
+    int total;
+    DynamicObstacle(int x, int y, double heading, double speed)
+        : x(x), y(y), estimate_h(0), estimate_s(0), heading(heading),speed(speed){};
 
-    DynamicObstacle(double maxspeed, double minspeed, double radius, double x, double y)
-        : maxspeed(maxspeed), minspeed(minspeed), radius(radius), x(x), y(y), angle(0){};
+    DynamicObstacle(int x, int y, int total)
+        : x(x), y(y), estimate_h(0), estimate_s(0), heading(0),speed(0), current(0), total(total){};
 
     DynamicObstacle()
-        : angle(0){};
+        : estimate_h(0),estimate_s(0){};
 
     Dynamicxy getxy()
     {
-        return (Dynamicxy(x, y, radius));
+        return (Dynamicxy(x, y, 1));
     };
 
     double operator-(const DynamicObstacle d)
@@ -151,7 +177,6 @@ struct StaticObstacle
         return false;
     }
 
-
     void set(int x1, int y1)
     {
         x = x1;
@@ -161,13 +186,17 @@ struct StaticObstacle
 
 struct point
 {
-    double x;
-    double y;
+    int x;
+    int y;
+    int dx;
+    int dy;
 
-    point(double x1, double y1)
+    point(int x1, int y1, int dx1, int dy1)
     {
         x = x1;
         y = y1;
+        dx = dx1;
+        dy = dy1;
     };
     point(){};
 
@@ -178,15 +207,22 @@ struct point
         return false;
     }
 
-
-    void set(double x1, double y1)
+    void set(int x1, int y1, int dx1, int dy1)
     {
         x = x1;
         y = y1;
+        dx = dx1;
+        dy = dy1;
+    }
+
+    void set(State *s)
+    {
+        x = s->x;
+        y = s->y;
+        dx = s->dx;
+        dy = s->dy;
     }
 };
-
-
 
 namespace std
 {
@@ -201,9 +237,11 @@ struct hash<State>
     {
         static hash<int> hashf;
         size_t ret = 0;
-        ret^= hashf(c.x) + 0x9e3779b9 + (ret<< 6) + (ret>> 2);
-        ret^= hashf(c.y) + 0x9e3779b9 + (ret<< 6) + (ret>> 2);
-        ret^= hashf(c.time) + 0x9e3779b9 + (ret<< 6) + (ret>> 2);
+        ret ^= hashf(c.x) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(c.y) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(c.dx) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(c.dy) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(c.time) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         return ret;
     }
 };
@@ -218,8 +256,8 @@ struct hash<StaticObstacle>
     {
         static hash<int> hashf;
         size_t ret = 0;
-        ret^= hashf(c.x) + 0x9e3779b9 + (ret<< 6) + (ret>> 2);
-        ret^= hashf(c.y) + 0x9e3779b9 + (ret<< 6) + (ret>> 2);
+        ret ^= hashf(c.x) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(c.y) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         return ret;
     }
 };
@@ -233,12 +271,13 @@ struct hash<point>
     {
         static hash<int> hashf;
         size_t ret = 0;
-        ret^= hashf(c.x) + 0x9e3779b9 + (ret<< 6) + (ret>> 2);
-        ret^= hashf(c.y) + 0x9e3779b9 + (ret<< 6) + (ret>> 2);
+        ret ^= hashf(c.x) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(c.y) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(c.dx) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(c.dy) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         return ret;
     }
 };
-
 
 } // namespace std
 

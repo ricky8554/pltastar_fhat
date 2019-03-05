@@ -12,6 +12,15 @@ int Lss_Lrta::ASTAR(State requestStart)
     dummy->set(requestStart);
     start = expandState[dummy];
 
+    //+++++++++++++++++++++++++++++++++++++++
+    // printHtable(start->x, start->y);
+    // cout << "=================DDDDDD" << endl
+    //      << endl;
+    // debug.clear();
+    // debug1.clear();
+    // debugstart = requestStart;
+    //++++++++++++++++++++++++++++++++++++++
+
     auto it = expandState.begin();
 
     while (it != expandState.end())
@@ -48,14 +57,19 @@ int Lss_Lrta::ASTAR(State requestStart)
     {
 
         state = open.pop();
+        // cout << "\033[0;33m" << "STATE: " << "\033[0;30m" << *state << endl;
+
         opencheck.erase(state);
         close.insert(state);
         expansions += 1;
+        
+        debug.emplace(state->x, state->y);
 
         for (int i = -1; i <= 1; i++)
         {
             for (int j = -1; j <= 1; j++)
             {
+                
                 dummy->set(state->x + i, state->y + j, state->time + 1);
                 if (checkValid(dummy) && !close.find(dummy))
                 {
@@ -68,13 +82,17 @@ int Lss_Lrta::ASTAR(State requestStart)
                         expandState.insert(child_state);
                     }
                     double next_cost = state->cost + cost(state, child_state) + cost_d(child_state);
+
                     if (child_state->cost > next_cost)
                     {
                         child_state->cost = next_cost;
                         child_state->parent = state;
                         child_state->depth = state->depth + 1;
+                        
+
                         if (!opencheck.find(child_state))
                         {
+                            debug1.emplace(child_state->x, child_state->y);
                             opencheck.insert(child_state);
                             open.push(child_state);
                         }
@@ -83,16 +101,19 @@ int Lss_Lrta::ASTAR(State requestStart)
                             open.moveUP(child_state->qindex);
                         }
                     }
+
+                    // cout << "\033[0;35m" << "CHILD: " << "\033[0;30m" << *child_state << endl;
                 }
             }
         }
     } while (expansions < LOOKAHEAD);
+   
     return 0;
 }
 
 int Lss_Lrta::update_h()
 {
-
+    
     for (auto it : close)
     {
         it.key->h = DBL_MAX;
@@ -135,8 +156,12 @@ int Lss_Lrta::update_h()
 State_LSS *Lss_Lrta::pickBest()
 {
     double maxh = open.top()->f();
+    // for(int i = 0; i< open.size(); i++)
+    //     cout << "\033[0;34m" << "INOPEN: " << "\033[0;30m" << *(open[i]) << endl;
+    
     while (!open.empty() && open.top()->f() <= maxh)
     {
+        // cout << "\033[0;31m" << "CANDIT: " << "\033[0;30m" << *(open.top()) << endl;
         goalQ.push(open.pop());
     }
 
@@ -163,12 +188,12 @@ int Lss_Lrta::plan(State requestStart)
         return 0;
     s = sgoal = pickBest();
 
-    //std::cout << "CHOSE: " << sgoal->x << "\t" << sgoal->y << "\t" << sgoal->cost << "\t" << sgoal->h << "\t" << sgoal->f() << endl;
     update_h();
     
     path = vector<State>();
     while (s != start)
     {
+        // cout << "\033[0;32m" << "CHOSE: " << "\033[0;30m" << *s << endl;
         path.push_back(*s);
         s = s->parent;
     }
@@ -208,33 +233,5 @@ void Lss_Lrta::setStatic(unordered_set<StaticObstacle> &s)
     staticObstacles = s;
 }
 
-void Lss_Lrta::setDynamic(vector<DynamicObstacle> &d)
-{
-    dynamicObstacles = d;
-
-    for (int i = 0; i < dynamicObstacles.size(); i++)
-    {
-        int x = dynamicObstacles[i].x, y = dynamicObstacles[i].y;
-        int x1 = x;
-        dummy_static_obs.set(x1, y);
-        while (staticObstacles.find(dummy_static_obs) == staticObstacles.end() && x1 < boardw)
-        {
-            dummy_static_obs.set(x1, y);
-            x1 += 1;
-        }
-
-        dynamicObstacles[i].right = x1;
-        x1 = x;
-        dummy_static_obs.set(x1, y);
-
-        while (staticObstacles.find(dummy_static_obs) == staticObstacles.end() && x1 > 0)
-        {
-            dummy_static_obs.set(x1, y);
-            x1 -= 1;
-        }
-
-        dynamicObstacles[i].left = x1;
-    }
-}
 
 

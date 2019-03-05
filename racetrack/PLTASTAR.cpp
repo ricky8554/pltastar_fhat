@@ -68,18 +68,19 @@ int PLTASTAR::ASTAR(State requestStart)
         {
             for (int j = -1; j <= 1; j++)
             {
-                dummy->set(state->x + i, state->y + j, state->time + 1);
+                int dx = state->dx + i, dy = state->dy + j;
+                dummy->set(state->x + dx, state->y + dy, state->time + 1);// change to valid if not valid!!
                 if (checkValid(dummy) && !close.find(dummy))
                 {
                     State_PLRTA *child_state = expandState[dummy];
                     if (!child_state)
                     {
-                        child_state = new State_PLRTA(state->x + i, state->y + j, DBL_MAX, DBL_MAX, 0, 0, state->time + 1);
+                        child_state = new State_PLRTA(state->x + dx, state->y + dy,dx,dy, DBL_MAX, DBL_MAX, 0, 0, state->time + 1);
                         create_pred(child_state, state->time);
                         expandState.insert(child_state);
                     }
                     child_state->h_s = h_value_static(child_state);
-                    double dcost = state->cost_d + cost_d(child_state);
+                    double dcost = state->cost_d + cost_d(state,child_state);
                     double scost = state->cost_s + cost(state, child_state);
 
                     if (child_state->cost_s + child_state->cost_d > scost + dcost)
@@ -125,7 +126,8 @@ int PLTASTAR::update_h_static(PQueue<State_PLRTA *> open1, HashSet<State_PLRTA *
         if (!state)
         {
             state = new State_PLRTA_Static(it.key);
-            htable_static[getindex(state->x, state->y)] = DBL_MAX;
+            dummy_point.set(state);
+            htable_static[dummy_point] = DBL_MAX;
             for (auto i : it.key->pred)
                 state->pred_static.emplace(i.x, i.y);
             close.insert(state);
@@ -146,14 +148,14 @@ int PLTASTAR::update_h_static(PQueue<State_PLRTA *> open1, HashSet<State_PLRTA *
             if (dummy_static->x == goal->x && dummy_static->y == goal->y)
             {
                 double cost_s = 0;//cost(dummy_static, dummy_static) + state1->h_s;
-                int index = getindex(dummy_static->x, dummy_static->y);
+                // int index = getindex(dummy_static->x, dummy_static->y);
                 State_PLRTA_Static *state = close[dummy_static];
                 for (auto i : state1->pred)
                     state->pred_static.emplace(i.x, i.y);
-
-                if (htable_static[index] > cost_s)
+                dummy_point.set(state);
+                if (htable_static[dummy_point] > cost_s)
                 {
-                    htable_static[index] = cost_s;
+                    htable_static[dummy_point] = cost_s;
                     state->h_s = cost_s;
                 }
 
@@ -207,13 +209,14 @@ int PLTASTAR::update_h_static(PQueue<State_PLRTA *> open1, HashSet<State_PLRTA *
             State_PLRTA_Static *pred_state = close[dummy_static];
             if (pred_state)
             {
-                double pred_h = cost(pred_state, state) + htable_static[getindex(state->x, state->y)];
-
+                dummy_point.set(state);
+                double pred_h = cost(pred_state, state) + htable_static[dummy_point];
+                dummy_point.set(pred_state);
                 //cerr << "PRED "<<pred_state->x << " " << pred_state->y<< " " << htable_static[getindex(pred_state->x, pred_state->y)]<<" " << state->h_s <<  endl;
-                if (htable_static[getindex(pred_state->x, pred_state->y)] > pred_h)
+                if (htable_static[dummy_point] > pred_h)
                 {
                     pred_state->h_s = pred_h;
-                    htable_static[getindex(pred_state->x, pred_state->y)] = pred_h;
+                    htable_static[dummy_point] = pred_h;
 
                     if (!opencheck.find(pred_state))
                     {

@@ -87,6 +87,22 @@ class State_LSS_FHAT : public State
     {
         return sqrt((x - d.x) * (x - d.x) + (y - d.y) * (y - d.y));
     }
+
+    friend ostream &operator<<(ostream &os, const State_LSS_FHAT &state)
+    {
+        os << "X:" << setw(3) << left << state.x
+           << "Y:" << setw(3) << left << state.y
+           << "G:" << setw(3) << left << state.cost
+           << "H:" << setw(3) << left << state.h
+           << "E:" << setw(13) << left << state.h_error
+           << "F:" << setw(3) << left << state.f()
+           << "f:" << setw(13) << left << state.fhat()
+           << "D:" << setw(3) << left << state.d
+           << "R:" << setw(3) << left << state.derr
+           << "T:" << setw(4) << left << state.time
+           << "P:" << state.depth;
+        return os;
+    }
 };
 
 class Lss_Lrta_Fhat : public Plan
@@ -122,7 +138,7 @@ class Lss_Lrta_Fhat : public Plan
 
     void setStatic(unordered_set<StaticObstacle> &s) override;
 
-    void setDynamic(vector<DynamicObstacle> &d) override;
+    // void setDynamic(vector<DynamicObstacle> &d) override;
 
     unordered_set<State> getSTATE() override
     {

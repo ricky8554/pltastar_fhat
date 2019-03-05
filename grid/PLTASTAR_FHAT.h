@@ -74,6 +74,11 @@ class State_PLRTA_FHAT : public State
         return cost_s + cost_d + h_s + h_d;
     }
 
+    const double f_static() const
+    {
+        return cost_s + h_s;
+    }
+
     const double fhat() const
     {
         return cost_s + cost_d + h_s + h_d + h_error;
@@ -92,6 +97,24 @@ class State_PLRTA_FHAT : public State
     double operator-(const State_PLRTA_FHAT &d)
     {
         return sqrt((x - d.x) * (x - d.x) + (y - d.y) * (y - d.y));
+    }
+
+    friend ostream &operator<<(ostream &os, const State_PLRTA_FHAT &state)
+    {
+        os << "X:" << setw(3) << left << state.x
+           << "Y:" << setw(3) << left << state.y
+           << "G:" << setw(3) << left << state.cost_s
+           << "H:" << setw(3) << left << state.h_s
+           << "g:" << setw(3) << left << state.cost_d
+           << "h:" << setw(3) << left << state.h_d
+           << "E:" << setw(13) << left << state.h_error
+           << "F:" << setw(3) << left << state.f()
+           << "f:" << setw(13) << left << state.fhat()
+           << "D:" << setw(3) << left << state.d
+           << "R:" << setw(3) << left << state.derr
+           << "T:" << setw(4) << left << state.time
+           << "P:" << state.depth;
+        return os;
     }
 };
 
@@ -184,7 +207,7 @@ class PLTASTAR_FHAT : public Plan
 
     void setStatic(unordered_set<StaticObstacle> &s) override;
 
-    void setDynamic(vector<DynamicObstacle> &d) override;
+    // void setDynamic(vector<DynamicObstacle> &d) override;
 
     unordered_set<State> getSTATE() override
     {
@@ -215,7 +238,7 @@ class PLTASTAR_FHAT : public Plan
 
   private:
     double herr = 0, derr = 0;
-    State_PLRTA_FHAT *start, *goal, *dummy;
+    State_PLRTA_FHAT *start, *goal, *dummy, *touch_goal = NULL;
     State_PLRTA_FHAT_Static *dummy_static;
     PQueue<State_PLRTA_FHAT *> open;
     PQueue<State_PLRTA_FHAT *> goalQ;

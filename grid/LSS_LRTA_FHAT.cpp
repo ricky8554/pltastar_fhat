@@ -9,12 +9,18 @@ int Lss_Lrta_Fhat::ASTAR(State requestStart)
     State_LSS_FHAT *state;
     dummy->set(requestStart);
     start = expandState[dummy];
+    //+++++++++++++++++++++++++++++++++++++++
     // printHtable(start->x, start->y);
-    // cerr << "=================DDDDDD" << endl
+    // cout << "=================DDDDDD" << endl
     //      << endl;
+    // printDtable(start->x, start->y);
+    // cout << "=================RRRR" << endl;
+    // printDerrtable(start->x, start->y);
+    // cout << "=================+++++++++++++" << endl;
     // debug.clear();
     // debug1.clear();
     // debugstart = requestStart;
+    //++++++++++++++++++++++++++++++++++++++
 
     auto it = expandState.begin();
 
@@ -48,6 +54,8 @@ int Lss_Lrta_Fhat::ASTAR(State requestStart)
     opencheck.insert(start);
     double dsum = 0, hsum = 0;
 
+    // cout << "\033[0;31m" << "DERR " << herr << " HERR " << derr << "\033[0;30m" << endl;
+
     do
     {
 
@@ -56,7 +64,7 @@ int Lss_Lrta_Fhat::ASTAR(State requestStart)
         close.insert(state);
         expansions += 1;
         State_LSS_FHAT *best_child = NULL;
-       // cerr << "PICK: " << state->x << " " << state->y << " " << state->time << " " << state->cost << " " << state->h << " " << state->h_error << " " << state->fhat() << " " << state->d << endl;
+        // cout << "\033[0;33m" << "STATE: " << "\033[0;30m" << *state << endl;
         debug.emplace(state->x, state->y);
         for (int i = -1; i <= 1; i++)
         {
@@ -95,7 +103,7 @@ int Lss_Lrta_Fhat::ASTAR(State requestStart)
                             }
                         }
                     }
-
+                    // cout << "\033[0;35m" << "CHILD: " << "\033[0;30m" << *child_state << endl;
                     if (!best_child || best_child->f() > child_state->f())
                         best_child = child_state;
                 }
@@ -105,26 +113,27 @@ int Lss_Lrta_Fhat::ASTAR(State requestStart)
         if (best_child)
         {
             double fdiff = best_child->f() - state->f();
-            // if (fdiff != 0)
-            // {
-            //     cerr << state->x << " " << state->y << " " << state->h << " " << state->cost << endl;
-            //     cerr << best_child->x << " " << best_child->y << " " << best_child->h << " " << best_child->cost << endl;
-            //     cerr << fdiff << endl;
-            //     exit(-1);
-            // }
             fdiff = (fdiff < 0) ? 0 : fdiff;
             hsum += fdiff;
 
             double ddiff = best_child->d + 1 - state->d;
+            if(state->x == goal_plan.x && state->y == goal_plan.y)
+                ddiff = 0;
             ddiff = (ddiff < 0) ? 0 : ddiff;
             ddiff = (ddiff > 0.99) ? 0.99 : ddiff;
             dsum += ddiff;
+
+            // if(dsum != 0)
+            //   cerr << "warning" << endl;
+
+            // if(hsum != 0)
+            //   cerr << "warning1" << endl;
         }
     } while (expansions < LOOKAHEAD);
 
     derr = dsum / expansions;
     herr = hsum / expansions;
-    //cerr << "herr " << herr << " " << derr << endl;
+    
     return 0;
 }
 
@@ -143,8 +152,7 @@ int Lss_Lrta_Fhat::update_h()
         State_LSS_FHAT *state = open.pop();
         opencheck.erase(state);
         close.erase(state);
-        //cerr << "UPDATE: " << state->x << " " << state->y << " " << state->time << " " << state->cost << " " << state->h << " " << state->h_error << " " << state->fhat() << " " << state->d << endl;
-
+        
         for (point_t pred : state->pred)
         {
             dummy->set(pred);
@@ -158,9 +166,7 @@ int Lss_Lrta_Fhat::update_h()
                     pred_state->h = pred_h;
                     pred_state->derr = state->derr; //consider change this!!
                     pred_state->d = state->d + 1;
-                    // cerr << "\033[0;33m";
-                    // cerr << "INSIDE: " << pred_state->x << " " << pred_state->y << " " << pred_state->time << " " << pred_state->cost << " " << pred_state->h << " " << pred_state->h_error << " " << pred_state->fhat() << " " << state->d << endl;
-                    // cerr << "\033[0;30m";
+        
                     if (!opencheck.find(pred_state))
                     {
                         opencheck.insert(pred_state);
@@ -180,8 +186,13 @@ int Lss_Lrta_Fhat::update_h()
 State_LSS_FHAT *Lss_Lrta_Fhat::pickBest()
 {
     double maxh = open.top()->fhat();
+
+    // for(int i = 0; i< open.size(); i++)
+    //     cout << "\033[0;34m" << "INOPEN: " << "\033[0;30m" << *(open[i]) << endl;
+
     while (!open.empty() && open.top()->fhat() <= maxh)
     {
+        // cout << "\033[0;31m" << "CANDIT: " << "\033[0;30m" << *(open.top()) << endl;
         goalQ.push(open.pop());
     }
 
@@ -209,12 +220,13 @@ int Lss_Lrta_Fhat::plan(State requestStart)
         return 0;
     s = sgoal = pickBest();
 
-    //std::cout << "CHOSE: " << sgoal->x << "\t" << sgoal->y << "\t" << sgoal->cost << "\t" << sgoal->h << "\t" << sgoal->f() << endl;
+    
     update_h();
 
     path = vector<State>();
     while (s != start)
     {
+        // cout << "\033[0;32m" << "CHOOSE: " << "\033[0;30m" << *s << endl;
         path.push_back(*s);
         s = s->parent;
     }
@@ -257,31 +269,31 @@ void Lss_Lrta_Fhat::setStatic(unordered_set<StaticObstacle> &s)
     staticObstacles = s;
 }
 
-void Lss_Lrta_Fhat::setDynamic(vector<DynamicObstacle> &d)
-{
-    dynamicObstacles = d;
+// void Lss_Lrta_Fhat::setDynamic(vector<DynamicObstacle> &d)
+// {
+//     dynamicObstacles = d;
 
-    for (int i = 0; i < dynamicObstacles.size(); i++)
-    {
-        int x = dynamicObstacles[i].x, y = dynamicObstacles[i].y;
-        int x1 = x;
-        dummy_static_obs.set(x1, y);
-        while (staticObstacles.find(dummy_static_obs) == staticObstacles.end() && x1 < boardw)
-        {
-            dummy_static_obs.set(x1, y);
-            x1 += 1;
-        }
+//     for (int i = 0; i < dynamicObstacles.size(); i++)
+//     {
+//         int x = dynamicObstacles[i].x, y = dynamicObstacles[i].y;
+//         int x1 = x;
+//         dummy_static_obs.set(x1, y);
+//         while (staticObstacles.find(dummy_static_obs) == staticObstacles.end() && x1 < boardw)
+//         {
+//             dummy_static_obs.set(x1, y);
+//             x1 += 1;
+//         }
 
-        dynamicObstacles[i].right = x1;
-        x1 = x;
-        dummy_static_obs.set(x1, y);
+//         dynamicObstacles[i].right = x1;
+//         x1 = x;
+//         dummy_static_obs.set(x1, y);
 
-        while (staticObstacles.find(dummy_static_obs) == staticObstacles.end() && x1 > 0)
-        {
-            dummy_static_obs.set(x1, y);
-            x1 -= 1;
-        }
+//         while (staticObstacles.find(dummy_static_obs) == staticObstacles.end() && x1 > 0)
+//         {
+//             dummy_static_obs.set(x1, y);
+//             x1 -= 1;
+//         }
 
-        dynamicObstacles[i].left = x1;
-    }
-}
+//         dynamicObstacles[i].left = x1;
+//     }
+// }

@@ -14,21 +14,23 @@ using namespace std;
 class Plan
 {
   protected:
-    int LOOKAHEAD = 36, Collision_cost = 200, decay = 20;//7 8
-    int boardw, boardh, startTime;
+    int LOOKAHEAD = 36, Collision_cost = 200, decay = 20; //7 8 36
+    int boardw, boardh, startTime, startDynamic = 1, movingSteps = 1;
     double sqrt2 = 1.41421356237;
     float *htable;
     State goal_plan;
     State start_plan;
+    DynamicObstacle dummy_dynamic_obs;
 
     vector<DynamicObstacle> dynamicObstacles;
+    unordered_set<DynamicObstacle> dynamicObstacles_map;
     unordered_set<StaticObstacle> staticObstacles;
     StaticObstacle dummy_static_obs;
     vector<State> path;
 
     unordered_set<point> debug;
     unordered_set<point> debug1;
-    State debugstart = State(-1,-1);
+    State debugstart = State(-1, -1);
 
     //pltastar
     float *htable_static;
@@ -65,9 +67,95 @@ class Plan
         cerr << "ERROR setStatic CALL SUPER" << endl;
     };
 
-    virtual void setDynamic(vector<DynamicObstacle> &d)
+    void set_time(int time)
     {
-        cerr << "ERROR setDynamic CALL SUPER" << endl;
+        startTime = time;
+    }
+
+    void update_dynamic(DynamicObstacle &d, int t)
+    {
+        int x;
+        for (int i = 0; i < 2; i++)
+        {
+            x = d.x + cos(d.angle);
+            dummy_static_obs.set(x, d.y);
+            if (staticObstacles.find(dummy_static_obs) == staticObstacles.end() && x >= 0 && x < boardw)
+            {
+                d.x = x;
+                d.t = t;
+                return;
+            }
+            else
+                d.angle = (d.angle) ? 0 : 3.14159265;
+        }
+    }
+
+    void setDynamic(vector<DynamicObstacle> &d)
+    {
+        if (dynamicObstacles.size() != d.size())
+            dynamicObstacles = d;
+
+        int MAX = LOOKAHEAD + startTime;
+        cout << "=========================================== " << MAX << " " << startDynamic << " " << startTime<< endl;
+        for (int i = startDynamic; i <= MAX; ++i)
+        {
+            for (DynamicObstacle &dynamic : dynamicObstacles)
+            {
+                update_dynamic(dynamic, i);
+                dynamicObstacles_map.insert(dynamic);
+            }
+        }
+
+        for(DynamicObstacle dy: dynamicObstacles_map)
+        {
+            cout << dy.t << " " << dy.x << " " << dy.y << endl;
+        }
+        
+
+        startDynamic = MAX + 1;
+
+        
+
+        // dynamicObstacles = d;
+
+        // for (int i = 0; i < dynamicObstacles.size(); i++)
+        // {
+        //     int x = dynamicObstacles[i].x, y = dynamicObstacles[i].y;
+        //     int x1 = x;
+
+        //     if (x1 == boardw - 1)
+        //     {
+        //         dynamicObstacles[i].right = boardw - 1;
+        //     }
+        //     else
+        //     {
+        //         dummy_static_obs.set(x1, y);
+        //         while (staticObstacles.find(dummy_static_obs) == staticObstacles.end() && x1 <= boardw - 1)
+        //         {
+        //             x1 += 1;
+        //             dummy_static_obs.set(x1, y);
+        //         }
+
+        //         dynamicObstacles[i].right = x1 - 1;
+        //     }
+
+        //     x1 = x;
+
+        //     if (x1 == 0)
+        //     {
+        //         dynamicObstacles[i].left = 0;
+        //     }
+        //     else
+        //     {
+        //         dummy_static_obs.set(x1, y);
+        //         while (staticObstacles.find(dummy_static_obs) == staticObstacles.end() && x1 >= 0)
+        //         {
+        //             x1 -= 1;
+        //             dummy_static_obs.set(x1, y);
+        //         }
+        //         dynamicObstacles[i].left = x1 + 1;
+        //     }
+        // }
     };
 
     virtual unordered_set<State> getSTATE()
@@ -130,57 +218,62 @@ class Plan
 
     int cost_d(State *s)
     {
-        for (DynamicObstacle dynamic : dynamicObstacles)
-        {
-            int x = dynamic.x, y = dynamic.y, left = dynamic.left, right = dynamic.right, t = s->time - startTime;
-            int diff = right - left;
-            if (dynamic.angle == 0)
-            {
-                if (t < right - x)
-                {
-                    x += t;
-                }
-                else
-                {
-                    t -= (right - x);
+        dummy_dynamic_obs.set(s->x, s->y, s->time);
+        return (dynamicObstacles_map.find(dummy_dynamic_obs) == dynamicObstacles_map.end()) ? 0 : Collision_cost;
+        // for (DynamicObstacle dynamic : dynamicObstacles)
+        // {
 
-                    int remain = t % diff;
-                    int iteration = t / diff;
-                    if (iteration % 2 == 0)
-                        x = right - remain;
+        //     int x = dynamic.x, y = dynamic.y, left = dynamic.left, right = dynamic.right, t = s->time - startTime;
+        //     int diff = right - left;
+        //     if (diff != 0)
+        //     {
+        //         if (dynamic.angle == 0)
+        //         {
+        //             if (t < right - x)
+        //             {
+        //                 x += t;
+        //             }
+        //             else
+        //             {
+        //                 t -= (right - x);
 
-                    else
-                        x = left + remain;
+        //                 int remain = t % diff;
+        //                 int iteration = t / diff;
+        //                 if (iteration % 2 == 0)
+        //                     x = right - remain;
+        //                 else
+        //                     x = left + remain;
 
-                    //start from left
-                }
-            }
-            else
-            {
-                if (x - left > t)
-                {
-                    x -= t;
-                }
-                else
-                {
-                    t -= (x - left);
-                    int remain = t % diff;
-                    int iteration = t / diff;
-                    if (iteration % 2 == 0)
-                        x = left + remain;
-                    else
-                        x = right - remain;
+        //                 //start from left
+        //             }
+        //         }
+        //         else
+        //         {
+        //             if (x - left > t)
+        //             {
+        //                 x -= t;
+        //             }
+        //             else
+        //             {
+        //                 t -= (x - left);
+        //                 int remain = t % diff;
+        //                 int iteration = t / diff;
+        //                 if (iteration % 2 == 0)
+        //                     x = left + remain;
+        //                 else
+        //                     x = right - remain;
 
-                    //start from right
-                }
-            }
+        //                 //start from right
+        //             }
+        //         }
+        //     }
 
-            if (x == s->x && y == s->y)
-            {
-                return Collision_cost;
-            }
-        }
-        return 0;
+        //     if (x == s->x && y == s->y)
+        //     {
+        //         return Collision_cost;
+        //     }
+        // }
+        // return 0;
     }
 
     int checkValid(State *s)
@@ -199,6 +292,8 @@ class Plan
     {
         if (s.x == goal_plan.x && s1.x == goal_plan.x && s.y == goal_plan.y && s1.y == goal_plan.y)
             return 0;
+        // if(s1.x == goal_plan.x && s1.y == goal_plan.y)
+        //     return 0;
         return 1;
     }
 
@@ -206,7 +301,14 @@ class Plan
     {
         if (s->x == goal_plan.x && s1->x == goal_plan.x && s->y == goal_plan.y && s1->y == goal_plan.y)
             return 0;
+        // if(s1->x == goal_plan.x && s1->y == goal_plan.y)
+        //     return 0;
         return 1;
+    }
+
+    bool isGoal(State *s)
+    {
+        return (s->x == goal_plan.x && s->y == goal_plan.y);
     }
 
     bool ccheck(int x, int y)
@@ -234,41 +336,41 @@ class Plan
             checkTable[i] = false;
         }
 
-        // htable[getindex(goal.x, goal.y)] = goal.fakeh = 0;
+        htable[getindex(goal.x, goal.y)] = goal.fakeh = 0;
 
-        // q.push(goal);
-        // while (!q.empty())
-        // {
-        //     State state = q.top();
-        //     q.pop();
-        //     int index = getindex(state.x, state.y);
-        //     checkTable[index] = true;
-        //     for (int i = -1; i <= 1; i++)
-        //     {
-        //         for (int j = -1; j <= 1; j++)
-        //         {
-        //             int newindex = getindex(state.x + i, state.y + j);
-        //             if (checkTable[newindex])
-        //                 continue;
-        //             State newstate = State(state.x + i, state.y + j);
-        //             newstate.fakeh = cost(state, newstate) + htable[index];
-        //             if (ccheck(newstate.x, newstate.y) && newstate.fakeh < htable[newindex])
-        //             {
-        //                 htable[newindex] = newstate.fakeh;
-        //                 q.push(newstate);
-        //             }
-        //         }
-        //     }
-        // }
+        q.push(goal);
+        while (!q.empty())
+        {
+            State state = q.top();
+            q.pop();
+            int index = getindex(state.x, state.y);
+            checkTable[index] = true;
+            for (int i = -1; i <= 1; i++)
+            {
+                for (int j = -1; j <= 1; j++)
+                {
+                    int newindex = getindex(state.x + i, state.y + j);
+                    if (checkTable[newindex])
+                        continue;
+                    State newstate = State(state.x + i, state.y + j);
+                    newstate.fakeh = cost(state, newstate) + htable[index];
+                    if (ccheck(newstate.x, newstate.y) && newstate.fakeh < htable[newindex])
+                    {
+                        htable[newindex] = newstate.fakeh;
+                        q.push(newstate);
+                    }
+                }
+            }
+        }
         for (int i = 0; i < boardsize; i++)
         {
             int x = i % boardw, y = i / boardw;
-            
+
             if (ccheck(x, y))
             {
-                dtable[i] = derrtable[i] = getDistance(x, y);
-                float a = abs(x - goal.x), b = abs(y - goal.y);
-                htable[i] = (a > b) ? a : b;
+                dtable[i] = derrtable[i] = htable[i] = getDistance(x, y);
+                // float a = abs(x - goal.x), b = abs(y - goal.y);  //H_DIS
+                // htable[i] = (a > b) ? a : b;                     //H_DIS
             }
             else
                 htable[i] = dtable[i] = derrtable[i] = FLT_MAX;
@@ -285,13 +387,13 @@ class Plan
         {
             for (int j = 0; j < boardw; j++)
             {
-                if(x == j && y == i)
+                if (x == j && y == i)
                     cerr << "\033[0;31m";
-                else if(debugstart.x == j && debugstart.y == i)
+                else if (debugstart.x == j && debugstart.y == i)
                     cerr << "\033[0;34m";
-                else if(debug.find(point(j,i)) != debug.end())
+                else if (debug.find(point(j, i)) != debug.end())
                     cerr << "\033[0;32m";
-                else if(debug1.find(point(j,i)) != debug.end())
+                else if (debug1.find(point(j, i)) != debug.end())
                     cerr << "\033[0;33m";
                 else
                     cerr << "\033[0;30m";
@@ -327,13 +429,13 @@ class Plan
         {
             for (int j = 0; j < boardw; j++)
             {
-                if(x == j && y == i)
+                if (x == j && y == i)
                     cerr << "\033[0;31m";
-                else if(debugstart.x == j && debugstart.y == i)
+                else if (debugstart.x == j && debugstart.y == i)
                     cerr << "\033[0;34m";
-                else if(debug.find(point(j,i)) != debug.end())
+                else if (debug.find(point(j, i)) != debug.end())
                     cerr << "\033[0;32m";
-                else if(debug1.find(point(j,i)) != debug.end())
+                else if (debug1.find(point(j, i)) != debug.end())
                     cerr << "\033[0;33m";
                 else
                     cerr << "\033[0;30m";
@@ -368,13 +470,13 @@ class Plan
         {
             for (int j = 0; j < boardw; j++)
             {
-                if(x == j && y == i)
+                if (x == j && y == i)
                     cerr << "\033[0;31m";
-                else if(debugstart.x == j && debugstart.y == i)
+                else if (debugstart.x == j && debugstart.y == i)
                     cerr << "\033[0;34m";
-                else if(debug.find(point(j,i)) != debug.end())
+                else if (debug.find(point(j, i)) != debug.end())
                     cerr << "\033[0;32m";
-                else if(debug1.find(point(j,i)) != debug.end())
+                else if (debug1.find(point(j, i)) != debug.end())
                     cerr << "\033[0;33m";
                 else
                     cerr << "\033[0;30m";
@@ -409,13 +511,13 @@ class Plan
         {
             for (int j = 0; j < boardw; j++)
             {
-                if(x == j && y == i)
+                if (x == j && y == i)
                     cerr << "\033[0;31m";
-                else if(debugstart.x == j && debugstart.y == i)
+                else if (debugstart.x == j && debugstart.y == i)
                     cerr << "\033[0;34m";
-                else if(debug.find(point(j,i)) != debug.end())
+                else if (debug.find(point(j, i)) != debug.end())
                     cerr << "\033[0;32m";
-                else if(debug1.find(point(j,i)) != debug.end())
+                else if (debug1.find(point(j, i)) != debug.end())
                     cerr << "\033[0;33m";
                 else
                     cerr << "\033[0;30m";

@@ -14,7 +14,7 @@
 
 using namespace std;
 
-#define rate 300
+#define rate 100
 #define bord 100
 
 
@@ -24,6 +24,7 @@ class Obstacle
   private:
     vector<DynamicObstacle> dynamicObstacles;
     unordered_set<StaticObstacle> staticObstacles;
+    StaticObstacle dummy_static_obs;
     vector<State> path;
     State start, goal;
     Plan* planner = 0;
@@ -34,6 +35,9 @@ class Obstacle
     int plan;
     int index;
     int mode;//0 is lsslrtastar 1 is plrtastar
+    bool mode_dynamic = false;
+    int dynamic_lookahead = 1;
+    int node_per_step = 2000;
     void MoveObstacle();
     
     unordered_set<State> map;
@@ -114,6 +118,8 @@ class Obstacle
     void update();
 
     void update1();
+
+    void update_dynamic(DynamicObstacle &d);
 
     void setMode(int MODE)
     {

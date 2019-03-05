@@ -20,18 +20,18 @@ class State_LSS : public State
     mutable double cost, h;
     State_LSS *parent;
 
-    State_LSS(double x, double y)
-        : State(x, y), cost(0), h(0){};
-    State_LSS(double x, double y, int time)
-        : State(x, y, time), cost(0), h(0){};
-    State_LSS(int x, int y, double cost, double h)
-        : State(x, y), cost(cost), h(h){};
-    State_LSS(int x, int y, double cost, double h, int time)
-        : State(x, y, time), cost(cost), h(h){};
+    State_LSS(int x, int y, int dx, int dy)
+        : State(x, y,dx,dy), cost(0), h(0){};
+    State_LSS(int x, int y, int dx, int dy, int time)
+        : State(x, y,dx,dy, time), cost(0), h(0){};
+    State_LSS(int x, int y, int dx, int dy, double cost, double h)
+        : State(x, y,dx,dy), cost(cost), h(h){};
+    State_LSS(int x, int y, int dx, int dy, double cost, double h, int time)
+        : State(x, y,dx,dy, time), cost(cost), h(h){};
     State_LSS(State &s)
         : State(s){};
     State_LSS(State_LSS *s)
-        : State(s->x, s->y, s->time), cost(s->cost), h(s->h){};
+        : State(s->x, s->y,s->dx,s->dy, s->time), cost(s->cost), h(s->h){};
     State_LSS(){};
 
     ~State_LSS(){};
@@ -40,6 +40,8 @@ class State_LSS : public State
     {
         x = s.x;
         y = s.y;
+        dx = s.dx;
+        dy = s.dy;
         time = s.time;
     };
 
@@ -47,19 +49,23 @@ class State_LSS : public State
     {
         x = s.x;
         y = s.y;
+        dx = s.dx;
+        dy = s.dy;
         time = s.time;
     };
 
-    void set(double x1, double y1, int time1)
+    void set(double x1, double y1,double dx1, double dy1, int time1)
     {
         x = x1;
         y = y1;
+        dx = dx1;
+        dy = dy1;
         time = time1;
     };
 
     bool operator==(const State_LSS &s) const
     {
-        if (x == s.x && y == s.y && this->time == s.time)
+        if (x == s.x && y == s.y && dx == s.dx && dy == s.dy && this->time == s.time)
             return true;
         return false;
     }
@@ -105,10 +111,9 @@ class Lss_Lrta : public Plan
             expandState.erase(elem);
             delete elem;
         }
-        delete dummy;
-        delete[] htable;
-        delete[] derrtable;
-        delete[] dtable;
+        // delete dummy;
+        // delete[] dtablebase;
+        // delete[] derrtablebase;
     };
 
     void setStartGoal(State starta, State goala, int bordw, int bordh) override;
@@ -125,7 +130,7 @@ class Lss_Lrta : public Plan
         unordered_set<State> ret;
         for (auto i : expandState)
         {
-            State s = State(i.key->x,i.key->y,i.key->time);
+            State s = State(i.key->x,i.key->y,i.key->dx,i.key->dy,i.key->time);
             s.fakec = i.key->cost;
             s.fakeh = i.key->h;
             ret.insert(s);
@@ -155,6 +160,8 @@ class Lss_Lrta : public Plan
         size_t ret = 0;
         ret^= hashf(s->x) + 0x9e3779b9 + (ret<< 6) + (ret>> 2);
         ret^= hashf(s->y) + 0x9e3779b9 + (ret<< 6) + (ret>> 2);
+        ret^= hashf(s->dx) + 0x9e3779b9 + (ret<< 6) + (ret>> 2);
+        ret^= hashf(s->dy) + 0x9e3779b9 + (ret<< 6) + (ret>> 2);
         ret^= hashf(s->time) + 0x9e3779b9 + (ret<< 6) + (ret>> 2);
         return ret;
     };

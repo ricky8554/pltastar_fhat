@@ -43,7 +43,7 @@ class State_LSS : public State
         time = s.time;
     };
 
-     void set(point_t &s)
+    void set(point_t &s)
     {
         x = s.x;
         y = s.y;
@@ -82,6 +82,18 @@ class State_LSS : public State
     {
         return sqrt((x - d.x) * (x - d.x) + (y - d.y) * (y - d.y));
     }
+
+    friend ostream &operator<<(ostream &os, const State_LSS &state)
+    {
+        os << "X:" << setw(3) << left << state.x
+           << "Y:" << setw(3) << left << state.y
+           << "G:" << setw(3) << left << state.cost
+           << "H:" << setw(3) << left << state.h
+           << "F:" << setw(3) << left << state.f()
+           << "T:" << setw(4) << left << state.time
+           << "D:" << state.depth;
+        return os;
+    }
 };
 
 class Lss_Lrta : public Plan
@@ -117,15 +129,14 @@ class Lss_Lrta : public Plan
 
     void setStatic(unordered_set<StaticObstacle> &s) override;
 
-    void setDynamic(vector<DynamicObstacle> &d) override;
-
+    // void setDynamic(vector<DynamicObstacle> &d) override;
 
     unordered_set<State> getSTATE() override
     {
         unordered_set<State> ret;
         for (auto i : expandState)
         {
-            State s = State(i.key->x,i.key->y,i.key->time);
+            State s = State(i.key->x, i.key->y, i.key->time);
             s.fakec = i.key->cost;
             s.fakeh = i.key->h;
             ret.insert(s);
@@ -153,9 +164,9 @@ class Lss_Lrta : public Plan
     static size_t Hash(State_LSS *const &s)
     {
         size_t ret = 0;
-        ret^= hashf(s->x) + 0x9e3779b9 + (ret<< 6) + (ret>> 2);
-        ret^= hashf(s->y) + 0x9e3779b9 + (ret<< 6) + (ret>> 2);
-        ret^= hashf(s->time) + 0x9e3779b9 + (ret<< 6) + (ret>> 2);
+        ret ^= hashf(s->x) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(s->y) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(s->time) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         return ret;
     };
     static unsigned int compare1(State_LSS *&s1, State_LSS *&s2)

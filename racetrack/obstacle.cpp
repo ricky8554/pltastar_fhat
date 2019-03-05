@@ -16,33 +16,33 @@ void Obstacle::addStaticObstacle(double x1, double y1)
     staticObstacles.insert(StaticObstacle(x1, y1));
 }
 
-void Obstacle::addDynamicObstacle(double maxspeed, double minspeed, double radius, double x, double y)
+void Obstacle::addDynamicObstacle(DynamicObstacle d)
 {
-    dynamicObstacles.push_back(DynamicObstacle(maxspeed, minspeed, radius, x, y));
+    dynamicObstacles.push_back(d);
 }
 
 int Obstacle::collisionChecking(int index, double radius, int x, int y)
 {
-    for (StaticObstacle staticobs : staticObstacles)
-    {
-        if (staticobs.x == x && staticobs.y == y)
-        {
-            if (!dynamicObstacles[index].angle)
-                dynamicObstacles[index].angle = PIR * 180;
-            else
-                dynamicObstacles[index].angle = 0;
+    // for (StaticObstacle staticobs : staticObstacles)
+    // {
+    //     if (staticobs.x == x && staticobs.y == y)
+    //     {
+    //         if (!dynamicObstacles[index].angle)
+    //             dynamicObstacles[index].angle = PIR * 180;
+    //         else
+    //             dynamicObstacles[index].angle = 0;
 
-            return 1;
-        }
-    }
-    if (x < 0 || x >= bordw || y < 0 || y > bordh)
-    {
-        if (!dynamicObstacles[index].angle)
-            dynamicObstacles[index].angle = PIR * 180;
-        else
-            dynamicObstacles[index].angle = 0;
-        return 1;
-    }
+    //         return 1;
+    //     }
+    // }
+    // if (x < 0 || x >= bordw || y < 0 || y > bordh)
+    // {
+    //     if (!dynamicObstacles[index].angle)
+    //         dynamicObstacles[index].angle = PIR * 180;
+    //     else
+    //         dynamicObstacles[index].angle = 0;
+    //     return 1;
+    // }
 
     return 0;
 }
@@ -74,18 +74,18 @@ void Obstacle::initialize()
     {
         planner = new Lss_Lrta();
     }
-    else if (mode == 1)
-    {
-        planner = new PLTASTAR();
-    }
-    else if (mode == 2)
-    {
-        planner = new Lss_Lrta_Fhat();
-    }
-    else if (mode == 3)
-    {
-        planner = new PLTASTAR_FHAT();
-    }
+    // else if (mode == 1)
+    // {
+    //     planner = new PLTASTAR();
+    // }
+    // else if (mode == 2)
+    // {
+    //     planner = new Lss_Lrta_Fhat();
+    // }
+    // else if (mode == 3)
+    // {
+    //     planner = new PLTASTAR_FHAT();
+    // }
     planner->setStatic(staticObstacles);
     planner->setStartGoal(start, goal, bordw, bordh);
     planner->setDynamic(dynamicObstacles);
@@ -125,18 +125,18 @@ void Obstacle::initialize1(int LookAhead)
     {
         planner = new Lss_Lrta();
     }
-    else if (mode == 1)
-    {
-        planner = new PLTASTAR();
-    }
-    else if (mode == 2)
-    {
-        planner = new Lss_Lrta_Fhat();
-    }
-    else if (mode == 3)
-    {
-        planner = new PLTASTAR_FHAT();
-    }
+    // else if (mode == 1)
+    // {
+    //     planner = new PLTASTAR();
+    // }
+    // else if (mode == 2)
+    // {
+    //     planner = new Lss_Lrta_Fhat();
+    // }
+    // else if (mode == 3)
+    // {
+    //     planner = new PLTASTAR_FHAT();
+    // }
     planner->setLookAhead(LookAhead);
     planner->setStatic(staticObstacles);
     planner->setStartGoal(start, goal, bordw, bordh);
@@ -156,22 +156,21 @@ void Obstacle::MoveObstacle()
     while (termination)
     {
         mtx.lock();
-        double x, y, radius, distance, newx, newy, angle;
-        for (int i = 0; i < dynamicObstacles.size(); i++)
+        double speed, heading;
+        for (DynamicObstacle dynamic: dynamicObstacles )
         {
-            x = dynamicObstacles[i].x;
-            y = dynamicObstacles[i].y;
-            radius = dynamicObstacles[i].radius;
-            do
+            dynamic.estimate_h = heading = dynamic.heading;
+            dynamic.estimate_s = speed = dynamic.speed;
+            dynamic.x += cos(heading) * speed;
+            dynamic.y += sin(heading) * speed;
+            if(--dynamic.remain == 0)
             {
-                angle = dynamicObstacles[i].angle;
-                //distance = drand(maxspeed, minspeed);
-                distance = 1;
-                newx = x + cos(angle) * distance;
-                newy = y + sin(angle) * distance;
-            } while (collisionChecking(i, radius, newx, newy));
-            dynamicObstacles[i].x = newx;
-            dynamicObstacles[i].y = newy;
+                dynamic.current += 1;
+                movement m = dynamic.instructions[dynamic.current % dynamic.total];
+                dynamic.heading = m.heading;
+                dynamic.speed = m.speed;
+                dynamic.remain = m.steps;
+            }
         }
 
         if (path.size() > index)
@@ -190,7 +189,9 @@ void Obstacle::MoveObstacle()
             double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
             cout << elapsed_secs << " SECS" << endl;
         }
+        
         this_thread::sleep_for(std::chrono::milliseconds(updaterate));
+        
     }
 }
 
@@ -203,28 +204,19 @@ int Obstacle::MoveObstacle(int Maxstep, int LookAhead)
 
     while (Maxstep > step++)
     {
-        double x, y, radius, distance, newx, newy, angle, collide = false;
+        double speed, heading, collide = false;
         if (path.size() > index)
         {
             start = path[index++];
         }
 
-        for (int i = 0; i < dynamicObstacles.size(); i++)
+        for (DynamicObstacle dynamic: dynamicObstacles )
         {
-            x = dynamicObstacles[i].x;
-            y = dynamicObstacles[i].y;
-            radius = dynamicObstacles[i].radius;
-            do
-            {
-                angle = dynamicObstacles[i].angle;
-                //distance = drand(maxspeed, minspeed);
-                distance = 1;
-                newx = x + cos(angle) * distance;
-                newy = y + sin(angle) * distance;
-            } while (collisionChecking(i, radius, newx, newy));
-            dynamicObstacles[i].x = newx;
-            dynamicObstacles[i].y = newy;
-            if (newx == start.x && newy == start.y)
+            dynamic.estimate_h = heading = dynamic.heading;
+            dynamic.estimate_s = speed = dynamic.speed;
+            dynamic.x += cos(heading) * speed;
+            dynamic.y += sin(heading) * speed;
+            if (dynamic.x == start.x && dynamic.y == start.y)//fix
             {
                 collide = true;
             }
@@ -293,10 +285,10 @@ State Obstacle::getStatePoint()
 
 void Obstacle::setStartPoint(double x, double y)
 {
-    start = State(x, y, 0);
+    start = State(x, y,0,0, 0);
 }
 
 void Obstacle::setGoalPoint(double x, double y)
 {
-    goal = State(x, y, 0);
+    goal = State(x, y,0,0, 0);
 }

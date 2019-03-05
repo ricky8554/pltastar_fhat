@@ -247,27 +247,45 @@ void setObstacles(int argc, char *argv[])
                     obstacle.addStaticObstacle(j, i);
                 else if (c == '!')
                 {
-                    obstacle.addDynamicObstacle(10, 10, 1, j, i);
+                   // obstacle.addDynamicObstacle(10, 10, 1, j, i);
                    
                 }
                 else if (c == 'S')
                 {
                     obstacle.setStartPoint(j, i);
-                    start = State(j, i);
+                    start = State(j, i,0,0);
                 }
                 else if (c == 'G')
                 {
                     obstacle.setGoalPoint(j, i);
-                    goal = State(j, i);
+                    goal = State(j, i,0,0);
                 }
             }
         }
     }
     else
     {
-        cin >> boardw >> boardh;
-        cout << boardw << " " << boardw << endl;
+        int num_dynamic;
+        cin >> boardw >> boardh >> num_dynamic;
+        cout << boardw << " " << boardh << endl;
         obstacle.setBoard(boardw, boardh);
+        for(int i = 0; i< num_dynamic; i++)
+        {
+            int dx, dy, instructions,steps;
+            double heading, speed;
+            cin >> dx >> dy >> instructions;
+            DynamicObstacle d(dx,dy,instructions);
+            for(int k = 0; k < instructions; k++)
+            {
+                cin >> heading >> speed >> steps;
+                d.instructions.emplace_back(heading , speed , steps);
+            }
+            d.remain = d.instructions[0].steps;
+            d.heading = d.instructions[0].heading;
+            d.speed = d.instructions[0].speed;
+            obstacle.addDynamicObstacle(d);
+        }
+
         for (int i = boardh - 1; i >= 0; i--)
         {
             for (int j = 0; j < boardw; j++)
@@ -278,17 +296,17 @@ void setObstacles(int argc, char *argv[])
                     obstacle.addStaticObstacle(j, i);
                 else if (c == '!')
                 {
-                    obstacle.addDynamicObstacle(10, 10, 1, j, i);
+                    //obstacle.addDynamicObstacle(10, 10, 1, j, i);
                 }
                 else if (c == '@')
                 {
                     obstacle.setStartPoint(j, i);
-                    start = State(j, i);
+                    start = State(j, i,0,0);
                 }
                 else if (c == '*')
                 {
                     obstacle.setGoalPoint(j, i);
-                    goal = State(j, i);
+                    goal = State(j, i,0,0);
                 }
             }
         }

@@ -4,23 +4,28 @@
 #include <algorithm>
 using namespace std;
 
-
 int Lss_Lrta::ASTAR(State requestStart)
 {
-
+    
     State_LSS *state;
+
     dummy->set(requestStart);
+    
+    
     start = expandState[dummy];
-
+    
     auto it = expandState.begin();
-
+    
     while (it != expandState.end())
     {
+        
         State_LSS *elem = it->key;
         ++it;
-
+        
+        
         if (elem->time < start->time)
         {
+
             expandState.erase(elem);
             delete elem;
         }
@@ -29,6 +34,7 @@ int Lss_Lrta::ASTAR(State requestStart)
             elem->cost = DBL_MAX;
         }
     }
+   
 
     //clear open close & open check
     open.clear();
@@ -46,8 +52,9 @@ int Lss_Lrta::ASTAR(State requestStart)
 
     do
     {
-
         state = open.pop();
+        cerr << "state " << state->x << " " << state->y << " " << state->dx << " " << state->dy << " " << state->time << " " << state->f() << " " << endl;
+        cerr << "COMPARE " << getDistance(state) << " " << state->h << endl;
         opencheck.erase(state);
         close.insert(state);
         expansions += 1;
@@ -56,34 +63,73 @@ int Lss_Lrta::ASTAR(State requestStart)
         {
             for (int j = -1; j <= 1; j++)
             {
-                dummy->set(state->x + i, state->y + j, state->time + 1);
-                if (checkValid(dummy) && !close.find(dummy))
+                int dx = state->dx + i, dy = state->dy + j;
+                dummy->set(state->x + dx, state->y + dy,dx,dy ,state->time + 1);
+                int valid = checkValid(state, dummy);
+                // std::cerr <<"expanded "  <<state->x << " " <<state->y  <<" "<<dummy->x<< " " <<dummy->y  <<" " << bo <<endl;
+                if (!valid)
                 {
-                    State_LSS *child_state = expandState[dummy];
-
-                    if (!child_state)
+                    int cx = state->x, cy = state->y, fx = dummy->x, fy = dummy->y;
+                    int distance = sqrt( (cx-fx)*(cx-fx) + (cy-fy)*(cy-fy) );
+                    int factor1 = int(distance / 0.05);
+                    double factor = factor1;
+                    double diffx = (fx - cx) / factor, diffy = (fy - cy) / factor;
+                    int finalx = cx, finaly = cy;
+                        
+                    for (int i = 0; i < factor1; i++)
                     {
-                        child_state = new State_LSS(state->x + i, state->y + j, DBL_MAX, h_value(dummy), state->time + 1);
-                        create_pred(child_state,state->time);
-                        expandState.insert(child_state);
+                        finalx += diffx;
+                        finaly += diffy;
+                        if(!checkValid2(finalx,finaly))
+                        {
+                            finalx -= diffx;
+                            finaly -= diffy;
+                            break;
+                        }
+                            
                     }
-                    double next_cost = state->cost + cost(state, child_state) + cost_d(child_state);
-                    if (child_state->cost > next_cost)
+                    finalx = round(finalx);
+                    finaly = round(finaly);
+                    dx = dy = 0;
+                    dummy->set(finalx, finaly,dx,dy ,state->time + 1);
+                }
+
+                State_LSS *child_state = expandState[dummy];
+
+                if (close.find(dummy))
+                {
+                    child_state->pred.emplace(state->x, state->y, state->dx, state->dy, state->time);
+                    continue;
+                }
+                
+
+                if (!child_state)
+                {
+                    child_state = new State_LSS(dummy->x, dummy->y, dx, dy, DBL_MAX, h_value(dummy), state->time + 1);
+                    expandState.insert(child_state);
+                }
+
+                child_state->pred.emplace(state->x, state->y, state->dx, state->dy, state->time);
+
+                double next_cost = state->cost + cost(state, child_state) + cost_d(state, child_state);
+
+                if (child_state->cost > next_cost)
+                {
+                    child_state->cost = next_cost;
+                    child_state->parent = state;
+                    child_state->depth = state->depth + 1;
+                    
+                    if (!opencheck.find(child_state))
                     {
-                        child_state->cost = next_cost;
-                        child_state->parent = state;
-                        child_state->depth = state->depth + 1;
-                        if (!opencheck.find(child_state))
-                        {
-                            opencheck.insert(child_state);
-                            open.push(child_state);
-                        }
-                        else
-                        {
-                            open.moveUP(child_state->qindex);
-                        }
+                        opencheck.insert(child_state);
+                        open.push(child_state);
+                    }
+                    else
+                    {
+                        open.moveUP(child_state->qindex);
                     }
                 }
+                
             }
         }
     } while (expansions < LOOKAHEAD);
@@ -112,7 +158,7 @@ int Lss_Lrta::update_h()
             State_LSS *pred_state = close[dummy];
             if (pred_state)
             {
-                double pred_h = cost(pred_state, state) + state->h + cost_d(pred_state);
+                double pred_h = cost(pred_state, state) + state->h + cost_d(pred_state, state);
                 if (pred_state->h > pred_h)
                 {
                     pred_state->h = pred_h;
@@ -144,7 +190,7 @@ State_LSS *Lss_Lrta::pickBest()
     State_LSS *s = NULL;
     do
     {
-        if(!s || s->depth < goalQ.top()->depth)
+        if (!s || s->depth < goalQ.top()->depth)
             s = goalQ.top();
         open.push(goalQ.pop());
     } while (!goalQ.empty());
@@ -154,29 +200,31 @@ State_LSS *Lss_Lrta::pickBest()
 
 int Lss_Lrta::plan(State requestStart)
 {
+    cerr << "START" << endl;
     startTime = requestStart.time;
     State_LSS *s, *sgoal;
-    
+
+
     ASTAR(requestStart);
-    
+
     if (open.empty())
         return 0;
     s = sgoal = pickBest();
 
     //std::cout << "CHOSE: " << sgoal->x << "\t" << sgoal->y << "\t" << sgoal->cost << "\t" << sgoal->h << "\t" << sgoal->f() << endl;
     update_h();
-    
+
     path = vector<State>();
     while (s != start)
     {
         path.push_back(*s);
         s = s->parent;
     }
-    
+
     start = sgoal;
+    cerr << "END" << endl;
     return !(start == goal);
 }
-
 
 void Lss_Lrta::setStartGoal(State s, State g, int bordw, int bordh)
 {
@@ -194,8 +242,8 @@ void Lss_Lrta::setStartGoal(State s, State g, int bordw, int bordh)
     goal->cost = DBL_MAX;
     start->cost = 0;
 
-    constructHtable(State(start->x,goal->y),State(goal->x,goal->y));
-
+    constructHtable(State(start->x, goal->y, 0, 0), State(goal->x, goal->y, 0, 0));
+    
     start->h = h_value(start);
     goal->h = 0;
 
@@ -211,30 +259,4 @@ void Lss_Lrta::setStatic(unordered_set<StaticObstacle> &s)
 void Lss_Lrta::setDynamic(vector<DynamicObstacle> &d)
 {
     dynamicObstacles = d;
-
-    for (int i = 0; i < dynamicObstacles.size(); i++)
-    {
-        int x = dynamicObstacles[i].x, y = dynamicObstacles[i].y;
-        int x1 = x;
-        dummy_static_obs.set(x1, y);
-        while (staticObstacles.find(dummy_static_obs) == staticObstacles.end() && x1 < boardw)
-        {
-            dummy_static_obs.set(x1, y);
-            x1 += 1;
-        }
-
-        dynamicObstacles[i].right = x1;
-        x1 = x;
-        dummy_static_obs.set(x1, y);
-
-        while (staticObstacles.find(dummy_static_obs) == staticObstacles.end() && x1 > 0)
-        {
-            dummy_static_obs.set(x1, y);
-            x1 -= 1;
-        }
-
-        dynamicObstacles[i].left = x1;
-    }
 }
-
-

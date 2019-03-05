@@ -6,7 +6,7 @@
 
 using namespace std;
 
-#define PIR 3.14159265 / 180
+#define PIR 3.14159265
 #define RESET "\033[0m"
 #define RED "\033[31m"
 #define sqrt2 1.41421356237
@@ -21,88 +21,77 @@ void Obstacle::addDynamicObstacle(double maxspeed, double minspeed, double radiu
     dynamicObstacles.push_back(DynamicObstacle(maxspeed, minspeed, radius, x, y));
 }
 
-int Obstacle::collisionChecking(int index, double radius, int x, int y)
+void Obstacle::update_dynamic(DynamicObstacle &d)
 {
-    for (StaticObstacle staticobs : staticObstacles)
+    int x;
+    for(int i = 0; i < 2; i ++)
     {
-        if (staticobs.x == x && staticobs.y == y)
+        x = d.x + cos(d.angle);
+        dummy_static_obs.set(x,d.y);
+        if(staticObstacles.find(dummy_static_obs) == staticObstacles.end() && x >= 0 && x < bordw )
         {
-            if (!dynamicObstacles[index].angle)
-                dynamicObstacles[index].angle = PIR * 180;
-            else
-                dynamicObstacles[index].angle = 0;
-
-            return 1;
+            d.x = x;
+            return;
         }
-    }
-    if (x < 0 || x >= bordw || y < 0 || y > bordh)
-    {
-        if (!dynamicObstacles[index].angle)
-            dynamicObstacles[index].angle = PIR * 180;
         else
-            dynamicObstacles[index].angle = 0;
-        return 1;
+            d.angle = (d.angle) ? 0: PIR;
     }
-
-    return 0;
 }
 
-// static double drand(double Max, double Min)
-// {
-//     return ((((double)rand()) / RAND_MAX) * (Max - Min) + Min);
-// }
-
-// static double h_value(State &s, State &goal)
-// {
-//     int x = abs(s.x - goal.x), y = abs(s.y - goal.y), min, dif;
-//     if (x > y)
-//     {
-//         min = y;
-//         dif = x;
-//     }
-//     else
-//     {
-//         min = x;
-//         dif = y;
-//     }
-//     return sqrt2 * min + dif;
-// }
 
 void Obstacle::initialize()
 {
-    if (mode == 0)
+    if (mode == 0 || mode == 4)
     {
         planner = new Lss_Lrta();
     }
-    else if (mode == 1)
+    else if (mode == 1 || mode == 5)
     {
         planner = new PLTASTAR();
     }
-    else if (mode == 2)
+    else if (mode == 2 || mode == 6)
     {
         planner = new Lss_Lrta_Fhat();
     }
-    else if (mode == 3)
+    else if (mode == 3 || mode == 7)
     {
         planner = new PLTASTAR_FHAT();
     }
+    if(mode > 3)
+        mode_dynamic = true;
     planner->setStatic(staticObstacles);
     planner->setStartGoal(start, goal, bordw, bordh);
+    planner->set_time(start.time);
     planner->setDynamic(dynamicObstacles);
     plan = planner->plan(start);
     vector<State> a = planner->getPath();
-    path.push_back(a[a.size() - 1]);
+    if(mode_dynamic)
+    {
+        dynamic_lookahead = a.size();
+        planner->setLookAhead(dynamic_lookahead * node_per_step);
+        path.insert(path.end(), a.rbegin(), a.rend());
+    }
+    else 
+        path.push_back(a.back());
+
     mtx1.lock();
     map = planner->getSTATE();
     mtx1.unlock();
 }
 void Obstacle::update()
 {
-
+    planner->set_time(start.time);
     planner->setDynamic(dynamicObstacles);
-    plan = planner->plan(path[index - 1]);
+    plan = planner->plan(start);
     vector<State> a = planner->getPath();
-    path.push_back(a[a.size() - 1]);
+    if(mode_dynamic)
+    {
+        dynamic_lookahead = a.size();
+        planner->setLookAhead(dynamic_lookahead * node_per_step);
+        path.insert(path.end(), a.rbegin(), a.rend());
+    }
+    else 
+        path.push_back(a.back());
 
     mtx1.lock();
     map = planner->getSTATE();
@@ -111,39 +100,63 @@ void Obstacle::update()
 
 void Obstacle::update1()
 {
+    planner->set_time(start.time);
     planner->setDynamic(dynamicObstacles);
-    plan = planner->plan(path[index - 1]);
+    plan = planner->plan(start);
     vector<State> a = planner->getPath();
-    path.push_back(a.back());
+    if(mode_dynamic)
+    {
+        dynamic_lookahead = a.size();
+        planner->setLookAhead(dynamic_lookahead * node_per_step);
+       
+        path.insert(path.end(), a.rbegin(), a.rend());
+        
+    }
+    else 
+        path.push_back(a.back());
 }
+
+
 
 void Obstacle::initialize1(int LookAhead)
 {
     if(planner)
         delete planner;
-    if (mode == 0)
+    if (mode == 0 || mode == 4)
     {
         planner = new Lss_Lrta();
     }
-    else if (mode == 1)
+    else if (mode == 1 || mode == 5)
     {
         planner = new PLTASTAR();
     }
-    else if (mode == 2)
+    else if (mode == 2 || mode == 6)
     {
         planner = new Lss_Lrta_Fhat();
     }
-    else if (mode == 3)
+    else if (mode == 3 || mode == 7)
     {
         planner = new PLTASTAR_FHAT();
     }
+
+    if(mode > 3)
+        mode_dynamic = true;
+    
     planner->setLookAhead(LookAhead);
     planner->setStatic(staticObstacles);
     planner->setStartGoal(start, goal, bordw, bordh);
+    planner->set_time(start.time);
     planner->setDynamic(dynamicObstacles);
     plan = planner->plan(start);
     vector<State> a = planner->getPath();
-    path.push_back(a[a.size() - 1]);
+    if(mode_dynamic)
+    {
+        dynamic_lookahead = a.size();
+        planner->setLookAhead(dynamic_lookahead * node_per_step);
+        path.insert(path.end(), a.rbegin(), a.rend());
+    }
+    else 
+        path.push_back(a.back());
 }
 
 void Obstacle::MoveObstacle()
@@ -156,28 +169,11 @@ void Obstacle::MoveObstacle()
     while (termination)
     {
         mtx.lock();
-        double x, y, radius, distance, newx, newy, angle;
-        for (int i = 0; i < dynamicObstacles.size(); i++)
-        {
-            x = dynamicObstacles[i].x;
-            y = dynamicObstacles[i].y;
-            radius = dynamicObstacles[i].radius;
-            do
-            {
-                angle = dynamicObstacles[i].angle;
-                //distance = drand(maxspeed, minspeed);
-                distance = 1;
-                newx = x + cos(angle) * distance;
-                newy = y + sin(angle) * distance;
-            } while (collisionChecking(i, radius, newx, newy));
-            dynamicObstacles[i].x = newx;
-            dynamicObstacles[i].y = newy;
-        }
+        for (DynamicObstacle & dynamic:dynamicObstacles)
+            update_dynamic(dynamic);
 
         if (path.size() > index)
-        {
             start = path[index++];
-        }
         mtx.unlock();
 
         unordered_set<State> s = getSTATE();
@@ -203,51 +199,27 @@ int Obstacle::MoveObstacle(int Maxstep, int LookAhead)
 
     while (Maxstep > step++)
     {
-        double x, y, radius, distance, newx, newy, angle, collide = false;
+        bool collide = false;
         if (path.size() > index)
         {
             start = path[index++];
         }
 
-        for (int i = 0; i < dynamicObstacles.size(); i++)
+        for (DynamicObstacle & dynamic:dynamicObstacles)
         {
-            x = dynamicObstacles[i].x;
-            y = dynamicObstacles[i].y;
-            radius = dynamicObstacles[i].radius;
-            do
-            {
-                angle = dynamicObstacles[i].angle;
-                //distance = drand(maxspeed, minspeed);
-                distance = 1;
-                newx = x + cos(angle) * distance;
-                newy = y + sin(angle) * distance;
-            } while (collisionChecking(i, radius, newx, newy));
-            dynamicObstacles[i].x = newx;
-            dynamicObstacles[i].y = newy;
-            if (newx == start.x && newy == start.y)
-            {
+            update_dynamic(dynamic);
+            if (dynamic.x == start.x && dynamic.y == start.y)
                 collide = true;
-            }
         }
+
         if (collide)
-        {
             cost += 200;
-        }
 
         if (start.x != goal.x || start.y != goal.y)
-        {
             cost += 1;
-        }
 
         if (path.size() <= index)
-        {
-
-            //clock_t begin = clock();
             update1();
-            //clock_t end = clock();
-            //double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-            //cout << elapsed_secs << " SECS" << endl;
-        }
     }
     if (path.size() > index)
     {
@@ -259,6 +231,7 @@ int Obstacle::MoveObstacle(int Maxstep, int LookAhead)
     }
     return cost;
 }
+
 void Obstacle::scheduledChanged()
 {
     threads.push_back(thread([=] { MoveObstacle(); }));

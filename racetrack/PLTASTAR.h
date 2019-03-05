@@ -20,22 +20,22 @@ class State_PLRTA : public State
     mutable double cost_s, cost_d, h_s, h_d;
     State_PLRTA *parent;
 
-    State_PLRTA(double x, double y)
-        : State(x, y), cost_s(0), cost_d(0), h_s(0), h_d(0){};
-    State_PLRTA(double x, double y, int time)
-        : State(x, y, time), cost_s(0), cost_d(0), h_s(0), h_d(0){};
+    State_PLRTA(int x, int y, int dx, int dy)
+        : State(x, y, dx, dy), cost_s(0), cost_d(0), h_s(0), h_d(0){};
+    State_PLRTA(double x, double y, int dx, int dy, int time)
+        : State(x, y, dx, dy, time), cost_s(0), cost_d(0), h_s(0), h_d(0){};
 
-    State_PLRTA(int x, int y, double cost_s, double cost_d, double h_s, double h_d, int time)
-        : State(x, y, time), cost_s(cost_s), cost_d(cost_d), h_s(h_s), h_d(h_d){};
+    State_PLRTA(int x, int y, int dx, int dy, double cost_s, double cost_d, double h_s, double h_d, int time)
+        : State(x, y, dx, dy, time), cost_s(cost_s), cost_d(cost_d), h_s(h_s), h_d(h_d){};
 
-    State_PLRTA(int x, int y, double cost_s, double cost_d, double h_s, double h_d, int time, State_PLRTA *parent, unordered_set<point_t> pred)
-        : State(x, y, time,pred), cost_s(cost_s), cost_d(cost_d), h_s(h_s), h_d(h_d), parent(parent){};
+    State_PLRTA(int x, int y, int dx, int dy, double cost_s, double cost_d, double h_s, double h_d, int time, State_PLRTA *parent, unordered_set<point_t> pred)
+        : State(x, y, dx, dy, time,pred), cost_s(cost_s), cost_d(cost_d), h_s(h_s), h_d(h_d), parent(parent){};
 
     State_PLRTA(State &s)
         : State(s){};
 
     State_PLRTA(State_PLRTA *s)
-        : State(s->x, s->y, s->time,s->pred), cost_s(s->cost_s), cost_d(s->cost_d), h_s(s->h_s), h_d(s->h_d), parent(s->parent){};
+        : State(s->x, s->y,s->dx,s->dy, s->time,s->pred), cost_s(s->cost_s), cost_d(s->cost_d), h_s(s->h_s), h_d(s->h_d), parent(s->parent){};
 
     State_PLRTA(){};
 
@@ -94,7 +94,7 @@ struct State_PLRTA_Static : public State_PLRTA
     State_PLRTA_Static(State_PLRTA *s)
         : State_PLRTA(s){};
     State_PLRTA_Static(State_PLRTA_Static *s)
-        : State_PLRTA(s->x, s->y, s->cost_s, s->cost_d, s->h_s, s->h_d, s->time, s->parent,s->pred){};
+        : State_PLRTA(s->x, s->y,s->dx,s->dy, s->cost_s, s->cost_d, s->h_s, s->h_d, s->time, s->parent,s->pred){};
     State_PLRTA_Static(){};
     unordered_set<point> pred_static;
 
@@ -160,9 +160,9 @@ class PLTASTAR : public Plan
         }
         delete dummy;
         delete dummy_static;
-        delete[] htable;
-        delete[] derrtable;
-        delete[] dtable;
+        delete[] htable_base;
+        delete[] derrtablebase;
+        delete[] dtablebase;
     };
 
     void setStartGoal(State starta, State goala, int bordw, int bordh) override;
@@ -178,7 +178,7 @@ class PLTASTAR : public Plan
         unordered_set<State> ret;
         for (auto i : expandState)
         {
-            State s = State(i.key->x, i.key->y, i.key->time);
+            State s = State(i.key->x, i.key->y, i.key->dx, i.key->dy, i.key->time);
             s.fakec = i.key->cost_s + i.key->cost_d;
             s.fakeh = i.key->h_s + i.key->h_d;
             ret.insert(s);

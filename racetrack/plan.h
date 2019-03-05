@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <unordered_set>
+#include <unordered_map>
 #include <vector>
 #include "state.h"
 #include <queue>
@@ -14,12 +15,13 @@ using namespace std;
 class Plan
 {
   protected:
-    int LOOKAHEAD = 36, Collision_cost = 200, decay = 20;//7 8
+    int LOOKAHEAD = 10, Collision_cost = 200, decay = 20; //7 8
     int boardw, boardh, startTime;
     double sqrt2 = 1.41421356237;
-    float *htable;
+    float *htable_base;
     State goal_plan;
     State start_plan;
+    point dummy_point;
 
     vector<DynamicObstacle> dynamicObstacles;
     unordered_set<StaticObstacle> staticObstacles;
@@ -28,12 +30,14 @@ class Plan
 
     unordered_set<point> debug;
     unordered_set<point> debug1;
-    State debugstart = State(-1,-1);
+    State debugstart = State(-1, -1, -1, -1);
 
-    //pltastar
-    float *htable_static;
-    //fhat
-    double *dtable, *derrtable;
+    // //pltastar
+    //double *htable_staticbase;
+    // //fhat
+    double *dtablebase, *derrtablebase;
+    unordered_map<point, double> htable_static;
+    unordered_map<point, double> dtable, derrtable;
 
   public:
     // Default constructor
@@ -106,90 +110,93 @@ class Plan
     //PLTASTAR
     double h_value_static(State *s)
     {
-        return htable_static[getindex(s->x, s->y)];
+        dummy_point.set(s);
+        if (htable_static.find(dummy_point) == htable_static.end())
+            htable_static[dummy_point] = htable_base[getindex(dummy_point.x, dummy_point.y)];
+        return htable_static[dummy_point];
     }
 
     //SHARE
 
     double h_value(State *s)
     {
-        return htable[getindex(s->x, s->y)];
+        return htable_base[getindex(s->x, s->y)];
     }
 
-    void create_pred(State *s, int t)
-    {
-        for (int i = -1; i <= 1; i++)
-            for (int j = -1; j <= 1; j++)
-                s->pred.emplace(s->x + i, s->y + j, t);
-    }
+    // void create_pred(State *s, int t)
+    // {
+    //     for (int i = -1; i <= 1; i++)
+    //         for (int j = -1; j <= 1; j++)
+    //             s->pred.emplace(s->x + i, s->y + j, t);
+    // }
 
     int getindex(int x, int y)
     {
         return boardw * y + x;
     }
 
-    int cost_d(State *s)
+    double cost_d(State *ps, State *s)
     {
-        for (DynamicObstacle dynamic : dynamicObstacles)
+        double timeinterval = 20;
+        int cx = ps->x, cy = ps->y, dt = s->time - startTime;
+        double dx = (s->x - cx) / timeinterval, dy = (s->y - cy) / timeinterval;
+        //double tcost = 0;
+        double p_collide = 0;
+        for (int i = 1; i <= timeinterval; i++)
         {
-            int x = dynamic.x, y = dynamic.y, left = dynamic.left, right = dynamic.right, t = s->time - startTime;
-            int diff = right - left;
-            if (dynamic.angle == 0)
+            double x = cx + dx * i, y = cy + dy * i;
+            double temp_p_collide = 0, p_not_collide = 1;
+            for (DynamicObstacle dynamic : dynamicObstacles)
             {
-                if (t < right - x)
+                double dhead = dynamic.estimate_h, dspeed = dynamic.estimate_s;
+                int dyt = (dt > 20) ? 20 : dt;
+                double dtime = (dt - 1 + i / timeinterval);
+                double dyx = cos(dhead) * dspeed * dtime + dynamic.x, dyy = sin(dhead) * dspeed * dtime + dynamic.y;
+                double powt = pow(1.2, dyt); //change 1.2 to any
+                double range = 0.5 * powt;
+                double dfx = dyx - x, dfy = dyy - y;
+
+                if (dfx * dfx + dfy * dfy < range * range)
                 {
-                    x += t;
-                }
-                else
-                {
-                    t -= (right - x);
-
-                    int remain = t % diff;
-                    int iteration = t / diff;
-                    if (iteration % 2 == 0)
-                        x = right - remain;
-
-                    else
-                        x = left + remain;
-
-                    //start from left
+                    p_not_collide *= (1 - 1 / powt);
                 }
             }
-            else
+            temp_p_collide = 1 - p_not_collide;
+            if (temp_p_collide > p_collide)
             {
-                if (x - left > t)
-                {
-                    x -= t;
-                }
-                else
-                {
-                    t -= (x - left);
-                    int remain = t % diff;
-                    int iteration = t / diff;
-                    if (iteration % 2 == 0)
-                        x = left + remain;
-                    else
-                        x = right - remain;
-
-                    //start from right
-                }
-            }
-
-            if (x == s->x && y == s->y)
-            {
-                return Collision_cost;
+                p_collide = temp_p_collide;
             }
         }
-        return 0;
+
+        return p_collide * Collision_cost;
     }
 
-    int checkValid(State *s)
+    int checkValid2(double x, double y)
     {
-        if (s->x < 0 || s->x >= boardw || s->y < 0 || s->y >= boardh)
+        if (x < 0 || x >= boardw || y < 0 || y >= boardh)
             return 0;
-        dummy_static_obs.set(s->x, s->y);
+        dummy_static_obs.set(round(x), round(y));
         if (staticObstacles.find(dummy_static_obs) != staticObstacles.end())
             return 0;
+        return 1;
+    }
+
+    int checkValid(State *ps, State *s)
+    {
+        double timeinterval = 20;
+        int cx = ps->x, cy = ps->y;
+        double dx = (s->x - cx) / timeinterval, dy = (s->y - cy) / timeinterval;
+        for (int i = 1; i <= timeinterval; i++)
+        {
+            double x = cx + dx * i, y = cy + dy * i;
+
+            if (x < 0 || x >= boardw || y < 0 || y >= boardh)
+                return 0;
+            // cerr << "testing " << x <<  " " << y << " "<<round(x) << " " << round(y) << endl;
+            dummy_static_obs.set(round(x), round(y));
+            if (staticObstacles.find(dummy_static_obs) != staticObstacles.end())
+                return 0;
+        }
 
         return 1;
     }
@@ -222,15 +229,14 @@ class Plan
         goal_plan = goal;
         start_plan = start;
         std::priority_queue<State, std::vector<State>, Compare> q;
-
         int boardsize = boardw * boardh;
-        htable = new float[boardsize];
-        dtable = new double[boardsize];
-        derrtable = new double[boardsize];
+        htable_base = new float[boardsize];
+        dtablebase = new double[boardsize];
+        derrtablebase = new double[boardsize];
         bool checkTable[boardsize];
         for (int i = 0; i < boardsize; i++)
         {
-            htable[i] = FLT_MAX;
+            htable_base[i] = FLT_MAX;
             checkTable[i] = false;
         }
 
@@ -263,186 +269,181 @@ class Plan
         for (int i = 0; i < boardsize; i++)
         {
             int x = i % boardw, y = i / boardw;
-            
+
             if (ccheck(x, y))
             {
-                dtable[i] = derrtable[i] = getDistance(x, y);
-                float a = abs(x - goal.x), b = abs(y - goal.y);
-                htable[i] = (a > b) ? a : b;
+                dtablebase[i] = derrtablebase[i] = htable_base[i] = getDistance(x, y);
             }
             else
-                htable[i] = dtable[i] = derrtable[i] = FLT_MAX;
+                htable_base[i] = dtablebase[i] = derrtablebase[i] = FLT_MAX;
         }
-
-        htable_static = new float[boardw * boardh];
-        memcpy(htable_static, htable, sizeof(float) * boardw * boardh);
     }
 
-    void printHtable(int x, int y)
-    {
-        std::cerr << std::setprecision(0) << std::fixed;
-        for (int i = boardh - 1; i >= 0; i--)
-        {
-            for (int j = 0; j < boardw; j++)
-            {
-                if(x == j && y == i)
-                    cerr << "\033[0;31m";
-                else if(debugstart.x == j && debugstart.y == i)
-                    cerr << "\033[0;34m";
-                else if(debug.find(point(j,i)) != debug.end())
-                    cerr << "\033[0;32m";
-                else if(debug1.find(point(j,i)) != debug.end())
-                    cerr << "\033[0;33m";
-                else
-                    cerr << "\033[0;30m";
-                int index = getindex(j, i);
-                if (htable[index] > 1000)
-                {
-                    cerr << "-01 ";
-                }
-                else if (htable[index] < 10)
-                {
-                    cerr << "00" << htable[index] << " ";
-                }
-                else if (htable[index] < 100)
-                {
-                    cerr << 0 << htable[index] << " ";
-                }
-                else
-                {
-                    cerr << htable[index] << " ";
-                }
-            }
-            cerr << endl;
-        }
-        cerr << "\033[0;30m";
+    // void printHtable(int x, int y)
+    // {
+    //     std::cerr << std::setprecision(0) << std::fixed;
+    //     for (int i = boardh - 1; i >= 0; i--)
+    //     {
+    //         for (int j = 0; j < boardw; j++)
+    //         {
+    //             if(x == j && y == i)
+    //                 cerr << "\033[0;31m";
+    //             else if(debugstart.x == j && debugstart.y == i)
+    //                 cerr << "\033[0;34m";
+    //             else if(debug.find(point(j,i)) != debug.end())
+    //                 cerr << "\033[0;32m";
+    //             else if(debug1.find(point(j,i)) != debug.end())
+    //                 cerr << "\033[0;33m";
+    //             else
+    //                 cerr << "\033[0;30m";
+    //             int index = getindex(j, i);
+    //             if (htable[index] > 1000)
+    //             {
+    //                 cerr << "-01 ";
+    //             }
+    //             else if (htable[index] < 10)
+    //             {
+    //                 cerr << "00" << htable[index] << " ";
+    //             }
+    //             else if (htable[index] < 100)
+    //             {
+    //                 cerr << 0 << htable[index] << " ";
+    //             }
+    //             else
+    //             {
+    //                 cerr << htable[index] << " ";
+    //             }
+    //         }
+    //         cerr << endl;
+    //     }
+    //     cerr << "\033[0;30m";
 
-        std::cerr << std::setprecision(2) << std::fixed;
-    }
+    //     std::cerr << std::setprecision(2) << std::fixed;
+    // }
 
-    void printHStable(int x, int y)
-    {
-        std::cerr << std::setprecision(0) << std::fixed;
-        for (int i = boardh - 1; i >= 0; i--)
-        {
-            for (int j = 0; j < boardw; j++)
-            {
-                if(x == j && y == i)
-                    cerr << "\033[0;31m";
-                else if(debugstart.x == j && debugstart.y == i)
-                    cerr << "\033[0;34m";
-                else if(debug.find(point(j,i)) != debug.end())
-                    cerr << "\033[0;32m";
-                else if(debug1.find(point(j,i)) != debug.end())
-                    cerr << "\033[0;33m";
-                else
-                    cerr << "\033[0;30m";
-                int index = getindex(j, i);
-                if (htable_static[index] > 1000)
-                {
-                    cerr << "-01 ";
-                }
-                else if (htable_static[index] < 10)
-                {
-                    cerr << "00" << htable_static[index] << " ";
-                }
-                else if (htable_static[index] < 100)
-                {
-                    cerr << 0 << htable_static[index] << " ";
-                }
-                else
-                {
-                    cerr << htable_static[index] << " ";
-                }
-            }
-            cerr << endl;
-        }
-        cerr << "\033[0;30m";
-        std::cerr << std::setprecision(2) << std::fixed;
-    }
+    // void printHStable(int x, int y)
+    // {
+    //     std::cerr << std::setprecision(0) << std::fixed;
+    //     for (int i = boardh - 1; i >= 0; i--)
+    //     {
+    //         for (int j = 0; j < boardw; j++)
+    //         {
+    //             if(x == j && y == i)
+    //                 cerr << "\033[0;31m";
+    //             else if(debugstart.x == j && debugstart.y == i)
+    //                 cerr << "\033[0;34m";
+    //             else if(debug.find(point(j,i)) != debug.end())
+    //                 cerr << "\033[0;32m";
+    //             else if(debug1.find(point(j,i)) != debug.end())
+    //                 cerr << "\033[0;33m";
+    //             else
+    //                 cerr << "\033[0;30m";
+    //             int index = getindex(j, i);
+    //             if (htable_static[index] > 1000)
+    //             {
+    //                 cerr << "-01 ";
+    //             }
+    //             else if (htable_static[index] < 10)
+    //             {
+    //                 cerr << "00" << htable_static[index] << " ";
+    //             }
+    //             else if (htable_static[index] < 100)
+    //             {
+    //                 cerr << 0 << htable_static[index] << " ";
+    //             }
+    //             else
+    //             {
+    //                 cerr << htable_static[index] << " ";
+    //             }
+    //         }
+    //         cerr << endl;
+    //     }
+    //     cerr << "\033[0;30m";
+    //     std::cerr << std::setprecision(2) << std::fixed;
+    // }
 
-    void printDtable(int x, int y)
-    {
-        std::cerr << std::setprecision(0) << std::fixed;
-        for (int i = boardh - 1; i >= 0; i--)
-        {
-            for (int j = 0; j < boardw; j++)
-            {
-                if(x == j && y == i)
-                    cerr << "\033[0;31m";
-                else if(debugstart.x == j && debugstart.y == i)
-                    cerr << "\033[0;34m";
-                else if(debug.find(point(j,i)) != debug.end())
-                    cerr << "\033[0;32m";
-                else if(debug1.find(point(j,i)) != debug.end())
-                    cerr << "\033[0;33m";
-                else
-                    cerr << "\033[0;30m";
-                int index = getindex(j, i);
-                if (dtable[index] > 1000)
-                {
-                    cerr << "-01 ";
-                }
-                else if (dtable[index] < 10)
-                {
-                    cerr << "00" << dtable[index] << " ";
-                }
-                else if (dtable[index] < 100)
-                {
-                    cerr << 0 << dtable[index] << " ";
-                }
-                else
-                {
-                    cerr << dtable[index] << " ";
-                }
-            }
-            cerr << endl;
-        }
-        cerr << "\033[0;30m";
-        std::cerr << std::setprecision(2) << std::fixed;
-    }
+    // void printDtable(int x, int y)
+    // {
+    //     std::cerr << std::setprecision(0) << std::fixed;
+    //     for (int i = boardh - 1; i >= 0; i--)
+    //     {
+    //         for (int j = 0; j < boardw; j++)
+    //         {
+    //             if(x == j && y == i)
+    //                 cerr << "\033[0;31m";
+    //             else if(debugstart.x == j && debugstart.y == i)
+    //                 cerr << "\033[0;34m";
+    //             else if(debug.find(point(j,i)) != debug.end())
+    //                 cerr << "\033[0;32m";
+    //             else if(debug1.find(point(j,i)) != debug.end())
+    //                 cerr << "\033[0;33m";
+    //             else
+    //                 cerr << "\033[0;30m";
+    //             int index = getindex(j, i);
+    //             if (dtable[index] > 1000)
+    //             {
+    //                 cerr << "-01 ";
+    //             }
+    //             else if (dtable[index] < 10)
+    //             {
+    //                 cerr << "00" << dtable[index] << " ";
+    //             }
+    //             else if (dtable[index] < 100)
+    //             {
+    //                 cerr << 0 << dtable[index] << " ";
+    //             }
+    //             else
+    //             {
+    //                 cerr << dtable[index] << " ";
+    //             }
+    //         }
+    //         cerr << endl;
+    //     }
+    //     cerr << "\033[0;30m";
+    //     std::cerr << std::setprecision(2) << std::fixed;
+    // }
 
-    void printDerrtable(int x, int y)
-    {
-        std::cerr << std::setprecision(0) << std::fixed;
-        for (int i = boardh - 1; i >= 0; i--)
-        {
-            for (int j = 0; j < boardw; j++)
-            {
-                if(x == j && y == i)
-                    cerr << "\033[0;31m";
-                else if(debugstart.x == j && debugstart.y == i)
-                    cerr << "\033[0;34m";
-                else if(debug.find(point(j,i)) != debug.end())
-                    cerr << "\033[0;32m";
-                else if(debug1.find(point(j,i)) != debug.end())
-                    cerr << "\033[0;33m";
-                else
-                    cerr << "\033[0;30m";
-                int index = getindex(j, i);
-                if (derrtable[index] > 1000)
-                {
-                    cerr << "-01"
-                         << " ";
-                }
-                else if (derrtable[index] < 10)
-                {
-                    cerr << "00" << derrtable[index] << " ";
-                }
-                else if (derrtable[index] < 100)
-                {
-                    cerr << 0 << derrtable[index] << " ";
-                }
-                else
-                {
-                    cerr << derrtable[index] << " ";
-                }
-            }
-            cerr << endl;
-        }
-        cerr << "\033[0;30m";
-        std::cerr << std::setprecision(2) << std::fixed;
-    }
+    // void printDerrtable(int x, int y)
+    // {
+    //     std::cerr << std::setprecision(0) << std::fixed;
+    //     for (int i = boardh - 1; i >= 0; i--)
+    //     {
+    //         for (int j = 0; j < boardw; j++)
+    //         {
+    //             if(x == j && y == i)
+    //                 cerr << "\033[0;31m";
+    //             else if(debugstart.x == j && debugstart.y == i)
+    //                 cerr << "\033[0;34m";
+    //             else if(debug.find(point(j,i)) != debug.end())
+    //                 cerr << "\033[0;32m";
+    //             else if(debug1.find(point(j,i)) != debug.end())
+    //                 cerr << "\033[0;33m";
+    //             else
+    //                 cerr << "\033[0;30m";
+    //             int index = getindex(j, i);
+    //             if (derrtable[index] > 1000)
+    //             {
+    //                 cerr << "-01"
+    //                      << " ";
+    //             }
+    //             else if (derrtable[index] < 10)
+    //             {
+    //                 cerr << "00" << derrtable[index] << " ";
+    //             }
+    //             else if (derrtable[index] < 100)
+    //             {
+    //                 cerr << 0 << derrtable[index] << " ";
+    //             }
+    //             else
+    //             {
+    //                 cerr << derrtable[index] << " ";
+    //             }
+    //         }
+    //         cerr << endl;
+    //     }
+    //     cerr << "\033[0;30m";
+    //     std::cerr << std::setprecision(2) << std::fixed;
+    // }
 
     // void PLTASTAR_FHAT::constructHtable()
     // {

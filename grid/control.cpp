@@ -6,7 +6,11 @@
 #include <stdio.h>
 #include <string>
 #include "obstacle.h"
+#include <thread>
+#include <mutex>
+
 using namespace std;
+int thread_number = 7;
 Obstacle obstacle;
 int boardh, boardw;
 State goal;
@@ -73,7 +77,6 @@ void setObstacles(int argc, char *argv[])
     else
     {
         cin >> boardw >> boardh;
-        cout << boardw << " " << boardw << endl;
         obstacle.setBoard(boardw, boardh);
         for (int i = boardh - 1; i >= 0; i--)
         {
@@ -102,22 +105,27 @@ void setObstacles(int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
-    // int lookahead[9] = {1,3,10,30,100,300,1000,3000,10000};
-    int lookahead[9] = {150,160,170,180,190,155,165,175,185};
+    int lookahead[5] = {10,30,100,300,1000};
+    //int lookahead[9] = {150,160,170,180,190,155,165,175,185};
     setObstacles(argc, argv);
     vector<DynamicObstacle> dobs = obstacle.getDynamicObstacle1();
-    for (int k = 20; k <= 1000000; k *= 10)
+    for (int k = 100; k <= 1000; k *= 10)
     {
-        for (int i = 1; i < 4; i+=2)//for (int i = 0; i < 4; i++)
+        cerr << "MOVEMENT " << k<< endl;
+        cout << "movements " << k << endl;
+        for (int i = 0; i < 8; i++) //for (int i = 1; i < 4; i+=2)
         {
+            cout << "algorithm " << i << endl;
+            cerr << "algorithm " << i << endl;
             obstacle.setMode(i);
-            for (int j = 1; j < 150; j++)
+            for (int j = 0; j < 5; j++)
             {
                 obstacle.setDynamicObstacle(dobs);
                 obstacle.setStartPoint(start.x, start.y);
                 obstacle.setGoalPoint(goal.x, goal.y);
-                cerr << "Algorithm: " << i << " LookAhead " << j << " Allow " << k << " movements" << " cost " << obstacle.MoveObstacle(k, j) << endl;
+                cout << lookahead[j]  << " " << obstacle.MoveObstacle(k, lookahead[j]) << endl;
             }
         }
     }
 }
+
