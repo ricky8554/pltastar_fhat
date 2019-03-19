@@ -101,13 +101,13 @@ struct Dynamicxy
 
 struct DynamicObstacle
 {
-    double maxspeed, minspeed, radius,angle;
-    int t, left, right, x, y;
+    double maxspeed, minspeed, radius;
+    int angle,t, left, right,top,bottom, x, y;
 
-    DynamicObstacle(double maxspeed, double minspeed, double radius, int x, int y)
-        : maxspeed(maxspeed), minspeed(minspeed), radius(radius), angle(0), x(x), y(y){};
+    DynamicObstacle(double maxspeed, double minspeed, double radius,int angle, int x, int y)
+        : maxspeed(maxspeed), minspeed(minspeed), radius(radius), angle(angle), x(x), y(y){};
 
-    DynamicObstacle(int t, int x, int y)
+    DynamicObstacle(int x, int y,int t)
         :  angle(0),t(t), x(x), y(y){};
 
     DynamicObstacle()

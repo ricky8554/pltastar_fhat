@@ -206,14 +206,30 @@ void setObstacles(int argc, char *argv[])
     obstacle.setMode(0);
     if (argc > 1)
     {
-        if (!strcmp(argv[1], "PLRTA_STAR") || !strcmp(argv[1], "1"))
-            obstacle.setMode(1);
-        else if (!strcmp(argv[1], "LSS_LRTA") || !strcmp(argv[1], "0"))
+        if (!strcmp(argv[1], "LSS_LRTA") || !strcmp(argv[1], "0"))
             obstacle.setMode(0);
+        else if (!strcmp(argv[1], "PLRTA_STAR") || !strcmp(argv[1], "1"))
+            obstacle.setMode(1);
         else if (!strcmp(argv[1], "LSS_LRTA_FHAT") || !strcmp(argv[1], "2"))
             obstacle.setMode(2);
         else if (!strcmp(argv[1], "PLRTA_STAR_FHAT") || !strcmp(argv[1], "3"))
             obstacle.setMode(3);
+        else if (!strcmp(argv[1], "PLRTA_STAR_MOD") || !strcmp(argv[1], "4"))
+            obstacle.setMode(4);
+        else if (!strcmp(argv[1], "PLRTA_STAR_FHAT_MOD") || !strcmp(argv[1], "5"))
+            obstacle.setMode(5);
+        else if (!strcmp(argv[1], "DYNAMIC_LSS_LRTA") || !strcmp(argv[1], "6"))
+            obstacle.setMode(6);
+        else if (!strcmp(argv[1], "DYNAMIC_PLRTA_STAR") || !strcmp(argv[1], "7"))
+            obstacle.setMode(7);
+        else if (!strcmp(argv[1], "DYNAMIC_LSS_LRTA_FHAT") || !strcmp(argv[1], "8"))
+            obstacle.setMode(8);
+        else if (!strcmp(argv[1], "DYNAMIC_PLRTA_STAR_FHAT") || !strcmp(argv[1], "9"))
+            obstacle.setMode(9);
+        else if (!strcmp(argv[1], "DYNAMIC_PLRTA_STAR_MOD") || !strcmp(argv[1], "10"))
+            obstacle.setMode(10);
+        else if (!strcmp(argv[1], "DYNAMIC_PLRTA_STAR_FHAT_MOD") || !strcmp(argv[1], "11"))
+            obstacle.setMode(11);
         else
             obstacle.setMode(0);
     }
@@ -247,7 +263,7 @@ void setObstacles(int argc, char *argv[])
                     obstacle.addStaticObstacle(j, i);
                 else if (c == '!')
                 {
-                   // obstacle.addDynamicObstacle(10, 10, 1, j, i);
+                    // obstacle.addDynamicObstacle(10, 10, 1, j, i);
                    
                 }
                 else if (c == 'S')

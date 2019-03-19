@@ -11,6 +11,11 @@ int Lss_Lrta::ASTAR(State requestStart)
     State_LSS *state;
     dummy->set(requestStart);
     start = expandState[dummy];
+    if(!start)
+    {
+        start = new State_LSS(requestStart.x, requestStart.y, 0, 0, requestStart.time );
+        expandState.insert(start);
+    }
 
     //+++++++++++++++++++++++++++++++++++++++
     // printHtable(start->x, start->y);

@@ -4,29 +4,31 @@
 #include <algorithm>
 using namespace std;
 
+#define DEBUG false
+#define DEBUGCHILD false
+#define DEBUGTABLE true
+
 int PLTASTAR::ASTAR(State requestStart)
 {
     State_PLRTA *state;
     dummy->set(requestStart);
     start = expandState[dummy];
-    // printHStable(start->x, start->y);
-    // cerr << "=================HHHHHH" << endl
-    //  << endl;
-    // printDerrtable(start->x,start->y);
-    // cerr << "=================Derrrr" << endl << endl;
-    // printDtable(start->x,start->y);
-    // cerr << "=================DDDDDD" << endl << endl;
-    // debug.clear();
-    // debug1.clear();
-    // debugstart = requestStart;
+    if(!start)
+    {
+        start = new State_PLRTA(requestStart.x, requestStart.y, 0, 0, 0, 0, requestStart.time );
+        expandState.insert(start);
+    }
 
     //+++++++++++++++++++++++++++++++++++++++
-    // printHtable(start->x, start->y);
-    // cout << "=================DDDDDD" << endl
-    //      << endl;
-    // debug.clear();
-    // debug1.clear();
-    // debugstart = requestStart;
+    if (DEBUG && DEBUGTABLE)
+    {
+        printHStable(start->x, start->y);
+        cout << "=================DDDDDD" << endl
+             << endl;
+        debug.clear();
+        debug1.clear();
+        debugstart = requestStart;
+    }
     //++++++++++++++++++++++++++++++++++++++
 
     auto it = expandState.begin();
@@ -68,7 +70,10 @@ int PLTASTAR::ASTAR(State requestStart)
     do
     {
         state = open.pop();
-        // cout << "\033[0;33m" << "STATE: " << "\033[0;30m" << *state << endl;
+        if (DEBUG)
+            cout << "\033[0;33m"
+                 << "STATES: "
+                 << "\033[0;30m" << *state << endl;
         opencheck.erase(state);
         close.insert(state);
         expansions += 1;
@@ -99,14 +104,6 @@ int PLTASTAR::ASTAR(State requestStart)
                         child_state->parent = state;
                         child_state->depth = state->depth + 1;
 
-                        //+++++++++++++++++++++++++++++++++++++++
-                        if (isGoal(child_state) && dcost < 20 && (touch_goal == NULL || touch_goal->depth < child_state->depth))
-                        {
-                            touch_goal = child_state;
-                        }
-                        //+++++++++++++++++++++++++++++++++++++++
-
-                        
                         if (!opencheck.find(child_state))
                         {
                             debug1.emplace(child_state->x, child_state->y);
@@ -118,8 +115,10 @@ int PLTASTAR::ASTAR(State requestStart)
                             open.moveUP(child_state->qindex);
                         }
                     }
-
-                    // cout << "\033[0;35m" << "CHILD: " << "\033[0;30m" << *child_state << endl;
+                    if (DEBUG && DEBUGCHILD)
+                        cout << "\033[0;35m"
+                             << "CHILD: "
+                             << "\033[0;30m" << *child_state << endl;
                 }
             }
         }
@@ -255,6 +254,7 @@ int PLTASTAR::update_h_static(PQueue<State_PLRTA *> open1, HashSet<State_PLRTA *
     return 0;
 }
 
+//currently use h_d + h_s as based, consider swich to
 int PLTASTAR::update_h_dynamic()
 {
     for (auto it : close)
@@ -262,7 +262,14 @@ int PLTASTAR::update_h_dynamic()
         it.key->h_d = DBL_MAX;
     }
 
+    // for(int i = 0; i< open.size(); i++)
+    // {
+    //     State_PLRTA * p = open[i];
+    //     p->h_s = h_value_static(p);
+    // }
+
     open.setUpCompare(&compare2);
+    // open.setUpCompare(&compare);
 
     while (close.size() != 0 && !open.empty())
     {
@@ -277,9 +284,11 @@ int PLTASTAR::update_h_dynamic()
             if (pred_state)
             {
                 double dcost = cost_d(pred_state) + state->h_d;
+                // double dcost = cost_d(pred_state) + state->f();
                 if (pred_state->h_d > dcost)
                 {
                     pred_state->h_d = dcost;
+                    // pred_state->h_d = dcost - pred_state->h_s - pred_state->cost_d - pred_state->cost_s;
                     if (!opencheck.find(pred_state))
                     {
                         opencheck.insert(pred_state);
@@ -293,6 +302,12 @@ int PLTASTAR::update_h_dynamic()
             }
         }
     }
+
+    // for (auto i: expandState)
+    //         cout << "\033[0;34m"
+    //              << "UPOPEN: "
+    //              << "\033[0;30m" << *(i.key) << endl;
+
     return 0;
 }
 
@@ -300,12 +315,22 @@ State_PLRTA *PLTASTAR::pickBest()
 {
     double maxh = open.top()->f();
 
-    // for(int i = 0; i< open.size(); i++)
-    //     cout << "\033[0;34m" << "INOPEN: " << "\033[0;30m" << *(open[i]) << endl;
+    if (DEBUG)
+    {
+        for (int i = 0; i < open.size(); i++)
+            cout << "\033[0;34m"
+                 << "INOPEN: "
+                 << "\033[0;30m" << *(open[i]) << endl;
+    }
 
     while (!open.empty() && open.top()->f() <= maxh)
     {
-        // cout << "\033[0;31m" << "CANDIT: " << "\033[0;30m" << *(open.top()) << endl;
+        if (DEBUG)
+        {
+            cout << "\033[0;31m"
+                 << "CANDIT: "
+                 << "\033[0;30m" << *(open.top()) << endl;
+        }
         goalQ.push(open.pop());
     }
 
@@ -337,32 +362,15 @@ int PLTASTAR::plan(State requestStart)
 
     path = vector<State>();
 
-    bool reach_goal = false;
-
     while (s != start)
     {
-        // cout << "\033[0;32m" << "CHOSE: " << "\033[0;30m" << *s << endl;
-        //+++++++++++++++
-        if(isGoal(s))
-            reach_goal = true;
-        //+++++++++++++++
+        if (DEBUG)
+            cout << "\033[0;32m"
+                 << "CHOOSE: "
+                 << "\033[0;30m" << *s << endl;
         path.push_back(*s);
         s = s->parent;
     }
-    touch_goal = NULL;
-    //+++++++++++++++
-    if( !reach_goal && touch_goal != NULL)
-    {
-        s = sgoal = touch_goal;
-        path.clear();
-        while (s != start)
-        {
-            path.push_back(*s);
-            s = s->parent;
-        }
-    }
-    touch_goal = NULL;
-    //+++++++++++++++
 
     // start = sgoal;
     return !(start == goal);

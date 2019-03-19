@@ -4,21 +4,27 @@
 #include <algorithm>
 using namespace std;
 
+#define DEBUG false
+#define DEBUGCHILD false
+#define DEBUGTABLE true
+
 int PLTASTAR::ASTAR(State requestStart)
 {
     State_PLRTA *state;
     dummy->set(requestStart);
     start = expandState[dummy];
-    // printHStable(start->x, start->y);
-    // cerr << "=================HHHHHH" << endl
-        //  << endl;
-    // printDerrtable(start->x,start->y);
-    // cerr << "=================Derrrr" << endl << endl;
-    // printDtable(start->x,start->y);
-    // cerr << "=================DDDDDD" << endl << endl;
-    // debug.clear();
-    // debug1.clear();
-    // debugstart = requestStart;
+
+    //+++++++++++++++++++++++++++++++++++++++
+    if (DEBUG && DEBUGTABLE)
+    {
+        printHtable(start->x, start->y);
+        cout << "=================DDDDDD" << endl
+             << endl;
+        debug.clear();
+        debug1.clear();
+        debugstart = requestStart;
+    }
+    //++++++++++++++++++++++++++++++++++++++
 
     auto it = expandState.begin();
 
@@ -35,7 +41,7 @@ int PLTASTAR::ASTAR(State requestStart)
         {
             elem->cost_s = DBL_MAX;
             elem->cost_d = DBL_MAX;
-            elem->h_d = (elem->h_d > decay) ? elem->h_d - decay : 0;
+            // elem->h_d = (elem->h_d > decay) ? elem->h_d - decay : 0;
             elem->h_s = h_value_static(elem);
         }
     }
@@ -59,44 +65,51 @@ int PLTASTAR::ASTAR(State requestStart)
     do
     {
         state = open.pop();
+        if (DEBUG)
+            cout << "\033[0;33m"
+                 << "STATES: "
+                 << "\033[0;30m" << *state << endl;
         opencheck.erase(state);
         close.insert(state);
         expansions += 1;
-        // cerr << "Pick: " << state->x << " " << state->y << " " << state->cost_s << " " << state->cost_d << " " << state->h_s << " " << state->h_d << " " << state->time << endl;
-        debug.emplace(state->x, state->y);
+        debug.emplace(state->x, state->y,0,0);
         for (int i = -1; i <= 1; i++)
         {
             for (int j = -1; j <= 1; j++)
             {
                 int dx = state->dx + i, dy = state->dy + j;
-                dummy->set(state->x + dx, state->y + dy, state->time + 1);// change to valid if not valid!!
-                if (checkValid(dummy) && !close.find(dummy))
+                dummy->set(state->x + dx, state->y + dy, dx, dy, state->time + 1);
+
+                if (!checkValid(state, dummy))
+                    find_avaliable_state(state, dummy, dx, dy);
+
+                State_PLRTA *child_state = expandState[dummy];
+
+                if (!close.find(dummy))
                 {
-                    State_PLRTA *child_state = expandState[dummy];
                     if (!child_state)
                     {
-                        child_state = new State_PLRTA(state->x + dx, state->y + dy,dx,dy, DBL_MAX, DBL_MAX, 0, 0, state->time + 1);
-                        create_pred(child_state, state->time);
+                        child_state = new State_PLRTA(dummy->x, dummy->y, dx, dy, DBL_MAX,DBL_MAX,0, 0, state->time + 1);
                         expandState.insert(child_state);
                     }
+
                     child_state->h_s = h_value_static(child_state);
                     double dcost = state->cost_d + cost_d(state,child_state);
                     double scost = state->cost_s + cost(state, child_state);
 
+
+
                     if (child_state->cost_s + child_state->cost_d > scost + dcost)
                     {
-
                         child_state->cost_s = scost;
                         child_state->cost_d = dcost;
                         child_state->parent = state;
                         child_state->depth = state->depth + 1;
 
-                        //cerr << "Expand: " << child_state->x << " " << child_state->y << " " << child_state->cost_s << " " << child_state->cost_d << " " << child_state->h_s << " " << child_state->h_d << " " << child_state->time << endl;
-
                         if (!opencheck.find(child_state))
                         {
-                            debug1.emplace(child_state->x, child_state->y);
                             opencheck.insert(child_state);
+                            debug1.emplace(child_state->x, child_state->y, 0, 0);
                             open.push(child_state);
                         }
                         else
@@ -105,6 +118,8 @@ int PLTASTAR::ASTAR(State requestStart)
                         }
                     }
                 }
+
+                child_state->pred.emplace(state->x, state->y, state->dx, state->dy, state->time);
             }
         }
     } while (expansions < LOOKAHEAD); //check collision for goal
@@ -126,16 +141,15 @@ int PLTASTAR::update_h_static(PQueue<State_PLRTA *> open1, HashSet<State_PLRTA *
         if (!state)
         {
             state = new State_PLRTA_Static(it.key);
-            dummy_point.set(state);
-            htable_static[dummy_point] = DBL_MAX;
+            set_h_value_static(state,DBL_MAX);
             for (auto i : it.key->pred)
-                state->pred_static.emplace(i.x, i.y);
+                state->pred_static.emplace(i.x, i.y,i.dx,i.dy);
             close.insert(state);
         }
         else
         {
             for (auto i : it.key->pred)
-                state->pred_static.emplace(i.x, i.y);
+                state->pred_static.emplace(i.x, i.y,i.dx,i.dy);
         }
     }
 
@@ -147,15 +161,14 @@ int PLTASTAR::update_h_static(PQueue<State_PLRTA *> open1, HashSet<State_PLRTA *
         {
             if (dummy_static->x == goal->x && dummy_static->y == goal->y)
             {
-                double cost_s = 0;//cost(dummy_static, dummy_static) + state1->h_s;
-                // int index = getindex(dummy_static->x, dummy_static->y);
+                double cost_s = 0; //cost(dummy_static, dummy_static) + state1->h_s;
                 State_PLRTA_Static *state = close[dummy_static];
                 for (auto i : state1->pred)
-                    state->pred_static.emplace(i.x, i.y);
-                dummy_point.set(state);
-                if (htable_static[dummy_point] > cost_s)
+                    state->pred_static.emplace(i.x, i.y,i.dx,i.dy);
+
+                if ( h_value_static(state) > cost_s)
                 {
-                    htable_static[dummy_point] = cost_s;
+                    set_h_value_static(state,cost_s);
                     state->h_s = cost_s;
                 }
 
@@ -177,14 +190,14 @@ int PLTASTAR::update_h_static(PQueue<State_PLRTA *> open1, HashSet<State_PLRTA *
             {
                 state = new State_PLRTA_Static(state1);
                 for (auto i : state1->pred)
-                    state->pred_static.emplace(i.x, i.y);
+                    state->pred_static.emplace(i.x, i.y,i.dx,i.dy);
                 opencheck.insert(state);
                 open.push(state);
             }
             else
             {
                 for (auto i : state1->pred)
-                    state->pred_static.emplace(i.x, i.y);
+                    state->pred_static.emplace(i.x, i.y,i.dx,i.dy);
             }
         }
     }
@@ -209,14 +222,13 @@ int PLTASTAR::update_h_static(PQueue<State_PLRTA *> open1, HashSet<State_PLRTA *
             State_PLRTA_Static *pred_state = close[dummy_static];
             if (pred_state)
             {
-                dummy_point.set(state);
-                double pred_h = cost(pred_state, state) + htable_static[dummy_point];
-                dummy_point.set(pred_state);
+                double pred_h = cost(pred_state, state) + h_value_static(state);
+
                 //cerr << "PRED "<<pred_state->x << " " << pred_state->y<< " " << htable_static[getindex(pred_state->x, pred_state->y)]<<" " << state->h_s <<  endl;
-                if (htable_static[dummy_point] > pred_h)
+                if (h_value_static(pred_state) > pred_h)
                 {
                     pred_state->h_s = pred_h;
-                    htable_static[dummy_point] = pred_h;
+                    set_h_value_static(pred_state,pred_h); 
 
                     if (!opencheck.find(pred_state))
                     {
@@ -236,19 +248,22 @@ int PLTASTAR::update_h_static(PQueue<State_PLRTA *> open1, HashSet<State_PLRTA *
 
     for (int i = 0; i < open.size(); i++)
         delete open[i];
-    for (auto i : close)
-        delete i.key;
+    // for (auto i : close)
+        // delete i.key;
     return 0;
 }
 
+//currently use h_d + h_s as based, consider swich to
 int PLTASTAR::update_h_dynamic()
 {
     for (auto it : close)
     {
-        it.key->h_d = DBL_MAX;
+        State_PLRTA *p = it.key;
+        p->h_d = DBL_MAX;
     }
 
     open.setUpCompare(&compare2);
+    // open.setUpCompare(&compare);
 
     while (close.size() != 0 && !open.empty())
     {
@@ -262,10 +277,12 @@ int PLTASTAR::update_h_dynamic()
             State_PLRTA *pred_state = close[dummy];
             if (pred_state)
             {
-                double dcost = cost_d(pred_state) + state->h_d;
+                double dcost = cost_d(pred_state,state) + state->h_d;
+                // double dcost = cost_d(pred_state) + state->f();
                 if (pred_state->h_d > dcost)
                 {
                     pred_state->h_d = dcost;
+                    // pred_state->h_d = dcost - pred_state->h_s - pred_state->cost_d - pred_state->cost_s;
                     if (!opencheck.find(pred_state))
                     {
                         opencheck.insert(pred_state);
@@ -279,29 +296,46 @@ int PLTASTAR::update_h_dynamic()
             }
         }
     }
+
+    // for (auto i: expandState)
+    //         cout << "\033[0;34m"
+    //              << "UPOPEN: "
+    //              << "\033[0;30m" << *(i.key) << endl;
+
     return 0;
 }
 
 State_PLRTA *PLTASTAR::pickBest()
 {
-    // for (int i = 0; i < open.size(); i++)
-    //     cerr << open[i]->x << " " << open[i]->y << " " << open[i]->time << " " << open[i]->depth << " " << open[i]->f() << " f" << endl;
     double maxh = open.top()->f();
+
+    if (DEBUG)
+    {
+        for (int i = 0; i < open.size(); i++)
+            cout << "\033[0;34m"
+                 << "INOPEN: "
+                 << "\033[0;30m" << *(open[i]) << endl;
+    }
+
     while (!open.empty() && open.top()->f() <= maxh)
     {
+        if (DEBUG)
+        {
+            cout << "\033[0;31m"
+                 << "CANDIT: "
+                 << "\033[0;30m" << *(open.top()) << endl;
+        }
         goalQ.push(open.pop());
     }
 
     State_PLRTA *s = NULL;
     do
     {
-        State_PLRTA *dd = goalQ.top();
-        cerr << dd->x << " " << dd->y << " " << dd->time << " " << dd->depth << " " << dd->f() << " t" << endl;
+        //State_PLRTA *dd = goalQ.top();
         if (!s || s->depth < goalQ.top()->depth)
             s = goalQ.top();
         open.push(goalQ.pop());
     } while (!goalQ.empty());
-    cerr << s->x << " " << s->y << " " << s->time << " " << s->depth << " " << s->f() << " final" << endl;
 
     return s;
 }
@@ -321,13 +355,18 @@ int PLTASTAR::plan(State requestStart)
     update_h_dynamic();
 
     path = vector<State>();
-    //cerr << "CHOSE: " << s->x << " " << s->y << " " << s->cost_s << " " << s->cost_d << " " << s->h_s << " " << s->h_d << " " << s->f() << " " << s->time << endl;
+
     while (s != start)
     {
+        if (DEBUG)
+            cout << "\033[0;32m"
+                 << "CHOOSE: "
+                 << "\033[0;30m" << *s << endl;
         path.push_back(*s);
         s = s->parent;
     }
-    start = sgoal;
+
+    // start = sgoal;
     return !(start == goal);
 }
 
@@ -351,7 +390,7 @@ void PLTASTAR::setStartGoal(State s, State g, int bordw, int bordh)
     start->cost_d = 0;
     start->cost_s = 0;
 
-    constructHtable(State(start->x, start->y), State(goal->x, goal->y));
+    constructHtable(State(start->x, start->y,0,0), State(goal->x, goal->y,0,0));
 
     start->h_s = h_value(start);
     start->h_d = 0;
@@ -365,33 +404,4 @@ void PLTASTAR::setStartGoal(State s, State g, int bordw, int bordh)
 void PLTASTAR::setStatic(unordered_set<StaticObstacle> &s)
 {
     staticObstacles = s;
-}
-
-void PLTASTAR::setDynamic(vector<DynamicObstacle> &d)
-{
-    dynamicObstacles = d;
-
-    for (int i = 0; i < dynamicObstacles.size(); i++)
-    {
-        int x = dynamicObstacles[i].x, y = dynamicObstacles[i].y;
-        int x1 = x;
-        dummy_static_obs.set(x1, y);
-        while (staticObstacles.find(dummy_static_obs) == staticObstacles.end() && x1 < boardw)
-        {
-            dummy_static_obs.set(x1, y);
-            x1 += 1;
-        }
-
-        dynamicObstacles[i].right = x1;
-        x1 = x;
-        dummy_static_obs.set(x1, y);
-
-        while (staticObstacles.find(dummy_static_obs) == staticObstacles.end() && x1 > 0)
-        {
-            dummy_static_obs.set(x1, y);
-            x1 -= 1;
-        }
-
-        dynamicObstacles[i].left = x1;
-    }
 }

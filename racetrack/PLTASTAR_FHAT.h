@@ -20,58 +20,40 @@ class State_PLRTA_FHAT : public State
     mutable double cost_s, cost_d, h_s, h_d, derr, h_error, d;
     State_PLRTA_FHAT *parent;
 
-    State_PLRTA_FHAT(double x, double y)
-        : State(x, y), cost_s(0), cost_d(0), h_s(0), h_d(0), derr(0), h_error(0), d(0){};
-    State_PLRTA_FHAT(double x, double y, int time)
-        : State(x, y, time), cost_s(0), cost_d(0), h_s(0), h_d(0), derr(0), h_error(0), d(0){};
+    State_PLRTA_FHAT(int x, int y, int dx, int dy)
+        : State(x, y, dx, dy), cost_s(0), cost_d(0), h_s(0), h_d(0), derr(0), h_error(0), d(0){};
+    State_PLRTA_FHAT(int x, int y, int dx, int dy, int time)
+        : State(x, y, dx, dy, time), cost_s(0), cost_d(0), h_s(0), h_d(0), derr(0), h_error(0), d(0){};
 
-    State_PLRTA_FHAT(int x, int y, double cost_s, double cost_d, double h_s, double h_d, int time)
-        : State(x, y, time), cost_s(cost_s), cost_d(cost_d), h_s(h_s), h_d(h_d), derr(0), h_error(0), d(0){};
+    State_PLRTA_FHAT(int x, int y, int dx, int dy, double cost_s, double cost_d, double h_s, double h_d, int time)
+        : State(x, y, dx, dy, time), cost_s(cost_s), cost_d(cost_d), h_s(h_s), h_d(h_d), derr(0), h_error(0), d(0){};
 
-    State_PLRTA_FHAT(int x, int y, double cost_s, double cost_d, double h_s, double h_d, int time, State_PLRTA_FHAT *parent, unordered_set<point_t> pred)
-        : State(x, y, time,pred), cost_s(cost_s), cost_d(cost_d), h_s(h_s), h_d(h_d), derr(0), h_error(0), d(0), parent(parent){};
+    State_PLRTA_FHAT(int x, int y, int dx, int dy, double cost_s, double cost_d, double h_s, double h_d, int time, State_PLRTA_FHAT *parent, unordered_set<point_t> pred)
+        : State(x, y, dx, dy, time, pred), cost_s(cost_s), cost_d(cost_d), h_s(h_s), h_d(h_d), derr(0), h_error(0), d(0), parent(parent){};
 
     State_PLRTA_FHAT(State &s)
         : State(s){};
 
     State_PLRTA_FHAT(State_PLRTA_FHAT *s)
-        : State(s->x, s->y, s->time,s->pred), cost_s(s->cost_s), cost_d(s->cost_d), h_s(s->h_s), h_d(s->h_d), derr(s->derr), h_error(s->h_error), d(s->d), parent(s->parent){};
+        : State(s->x, s->y, s->dx, s->dy, s->time, s->pred), cost_s(s->cost_s), cost_d(s->cost_d), h_s(s->h_s), h_d(s->h_d), derr(s->derr), h_error(s->h_error), d(s->d), parent(s->parent){};
 
     State_PLRTA_FHAT(){};
 
     ~State_PLRTA_FHAT(){};
 
-    void set(State &s)
-    {
-        x = s.x;
-        y = s.y;
-        time = s.time;
-    };
-
-    void set(point_t &s)
-    {
-        x = s.x;
-        y = s.y;
-        time = s.time;
-    };
-
-    void set(double x1, double y1, int time1)
-    {
-        x = x1;
-        y = y1;
-        time = time1;
-    };
-
     bool operator==(const State_PLRTA_FHAT &s) const
     {
-        if (x == s.x && y == s.y && this->time == s.time)
-            return true;
-        return false;
+        return (x == s.x && y == s.y && dx == s.dx && dy == s.dy && this->time == s.time);
     }
 
     const double f() const override
     {
         return cost_s + cost_d + h_s + h_d;
+    }
+
+    const double f_static() const
+    {
+        return cost_s + h_s;
     }
 
     const double fhat() const
@@ -93,6 +75,26 @@ class State_PLRTA_FHAT : public State
     {
         return sqrt((x - d.x) * (x - d.x) + (y - d.y) * (y - d.y));
     }
+
+    friend ostream &operator<<(ostream &os, const State_PLRTA_FHAT &state)
+    {
+        os << "X:" << setw(3) << left << state.x
+           << "Y:" << setw(3) << left << state.y
+           << "x:" << setw(3) << left << state.dx
+           << "y:" << setw(3) << left << state.dy
+           << "G:" << setw(3) << left << state.cost_s
+           << "H:" << setw(3) << left << state.h_s
+           << "g:" << setw(3) << left << state.cost_d
+           << "h:" << setw(3) << left << state.h_d
+           << "E:" << setw(13) << left << state.h_error
+           << "F:" << setw(3) << left << state.f()
+           << "f:" << setw(13) << left << state.fhat()
+           << "D:" << setw(3) << left << state.d
+           << "R:" << setw(3) << left << state.derr
+           << "T:" << setw(4) << left << state.time
+           << "P:" << state.depth;
+        return os;
+    }
 };
 
 struct State_PLRTA_FHAT_Static : public State_PLRTA_FHAT
@@ -100,7 +102,7 @@ struct State_PLRTA_FHAT_Static : public State_PLRTA_FHAT
     State_PLRTA_FHAT_Static(State_PLRTA_FHAT *s)
         : State_PLRTA_FHAT(s){};
     State_PLRTA_FHAT_Static(State_PLRTA_FHAT_Static *s)
-        : State_PLRTA_FHAT(s->x, s->y, s->cost_s, s->cost_d, s->h_s, s->h_d, s->time, s->parent, s->pred){};
+        : State_PLRTA_FHAT(s->x, s->y,s->dx,s->dy, s->cost_s, s->cost_d, s->h_s, s->h_d, s->time, s->parent, s->pred){};
     State_PLRTA_FHAT_Static(){};
     unordered_set<point> pred_static;
 
@@ -108,21 +110,21 @@ struct State_PLRTA_FHAT_Static : public State_PLRTA_FHAT
     {
         x = s->x;
         y = s->y;
+        dx = s->dx;
+        dy = s->dy;
     };
-
-
 
     void set(point s)
     {
         x = s.x;
         y = s.y;
+        dx = s.dx;
+        dy = s.dy;
     };
 
     bool operator==(const State_PLRTA_FHAT_Static &s) const
     {
-        if (x == s.x && y == s.y)
-            return true;
-        return false;
+        return (x == s.x && y == s.y && dx == s.dx && dy == s.dy);
     }
 
     const double f() const override
@@ -173,9 +175,9 @@ class PLTASTAR_FHAT : public Plan
         }
         delete dummy;
         delete dummy_static;
-        delete[] htable;
-        delete[] derrtable;
-        delete[] dtable;
+        // delete[] htable;
+        // delete[] derrtable;
+        // delete[] dtable;
     };
 
     void setStartGoal(State starta, State goala, int bordw, int bordh) override;
@@ -184,14 +186,14 @@ class PLTASTAR_FHAT : public Plan
 
     void setStatic(unordered_set<StaticObstacle> &s) override;
 
-    void setDynamic(vector<DynamicObstacle> &d) override;
+    // void setDynamic(vector<DynamicObstacle> &d) override;
 
     unordered_set<State> getSTATE() override
     {
         unordered_set<State> ret;
         for (auto i : expandState)
         {
-            State s = State(i.key->x, i.key->y, i.key->time);
+            State s = State(i.key->x, i.key->y, i.key->dx, i.key->dy, i.key->time);
             s.fakec = i.key->cost_s + i.key->cost_d;
             s.fakeh = i.key->h_s + i.key->h_d;
             ret.insert(s);
@@ -204,10 +206,6 @@ class PLTASTAR_FHAT : public Plan
     int update_h_static(PQueue<State_PLRTA_FHAT *> open, HashSet<State_PLRTA_FHAT *> opencheck, HashSet<State_PLRTA_FHAT *> close);
 
     int update_h_dynamic();
-
-    double getDerr(State_PLRTA_FHAT *s);
-
-    double getD(State_PLRTA_FHAT *s);
 
     State_PLRTA_FHAT *pickBest();
 
@@ -229,6 +227,8 @@ class PLTASTAR_FHAT : public Plan
         size_t ret = 0;
         ret ^= hashf(s->x) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         ret ^= hashf(s->y) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(s->dx) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(s->dy) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         ret ^= hashf(s->time) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         return ret;
     };
@@ -238,6 +238,8 @@ class PLTASTAR_FHAT : public Plan
         size_t ret = 0;
         ret ^= hashf(s->x) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         ret ^= hashf(s->y) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(s->dx) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(s->dy) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         return ret;
     };
 

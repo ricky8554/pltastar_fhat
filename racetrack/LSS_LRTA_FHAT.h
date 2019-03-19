@@ -20,48 +20,26 @@ class State_LSS_FHAT : public State
     mutable double cost, h, derr, h_error, d;
     State_LSS_FHAT *parent;
 
-    State_LSS_FHAT(double x, double y)
-        : State(x, y), cost(0), h(0), derr(0), h_error(0), d(0){};
-    State_LSS_FHAT(double x, double y, int time)
-        : State(x, y, time), cost(0), h(0), derr(0), h_error(0), d(0){};
-    State_LSS_FHAT(int x, int y, double cost, double h)
-        : State(x, y), cost(cost), h(h), derr(0), h_error(0), d(0){};
-    State_LSS_FHAT(int x, int y, double cost, double h, int time)
-        : State(x, y, time), cost(cost), h(h), derr(0), h_error(0), d(0){};
+    State_LSS_FHAT(int x, int y, int dx, int dy)
+        : State(x, y, dx, dy), cost(0), h(0), derr(0), h_error(0), d(0){};
+    State_LSS_FHAT(int x, int y, int dx, int dy, int time)
+        : State(x, y, dx, dy, time), cost(0), h(0), derr(0), h_error(0), d(0){};
+    State_LSS_FHAT(int x, int y, int dx, int dy, double cost, double h)
+        : State(x, y, dx, dy), cost(cost), h(h), derr(0), h_error(0), d(0){};
+    State_LSS_FHAT(int x, int y, int dx, int dy, double cost, double h, int time)
+        : State(x, y, dx, dy, time), cost(cost), h(h), derr(0), h_error(0), d(0){};
     State_LSS_FHAT(State &s)
         : State(s){};
     State_LSS_FHAT(State_LSS_FHAT *s)
-        : State(s->x, s->y, s->time,s->pred), cost(s->cost), h(s->h), derr(s->derr), h_error(s->h_error), d(s->d), parent(s->parent){};
+        : State(s->x, s->y, s->dx, s->dy, s->time, s->pred), cost(s->cost), h(s->h), derr(s->derr), h_error(s->h_error), d(s->d), parent(s->parent){};
     State_LSS_FHAT(){};
 
     ~State_LSS_FHAT(){};
 
-    void set(State &s)
-    {
-        x = s.x;
-        y = s.y;
-        time = s.time;
-    };
-
-     void set(point_t &s)
-    {
-        x = s.x;
-        y = s.y;
-        time = s.time;
-    };
-
-    void set(double x1, double y1, int time1)
-    {
-        x = x1;
-        y = y1;
-        time = time1;
-    };
 
     bool operator==(const State_LSS_FHAT &s) const
     {
-        if (x == s.x && y == s.y && this->time == s.time)
-            return true;
-        return false;
+        return (x == s.x && y == s.y && dx == s.dx && dy == s.dy && this->time == s.time);
     }
     const double f() const override
     {
@@ -87,6 +65,24 @@ class State_LSS_FHAT : public State
     {
         return sqrt((x - d.x) * (x - d.x) + (y - d.y) * (y - d.y));
     }
+
+    friend ostream &operator<<(ostream &os, const State_LSS_FHAT &state)
+    {
+        os << "X:" << setw(3) << left << state.x
+           << "Y:" << setw(3) << left << state.y
+           << "x:" << setw(3) << left << state.dx
+           << "y:" << setw(3) << left << state.dy
+           << "G:" << setw(3) << left << state.cost
+           << "H:" << setw(3) << left << state.h
+           << "E:" << setw(13) << left << state.h_error
+           << "F:" << setw(3) << left << state.f()
+           << "f:" << setw(13) << left << state.fhat()
+           << "D:" << setw(3) << left << state.d
+           << "R:" << setw(3) << left << state.derr
+           << "T:" << setw(4) << left << state.time
+           << "P:" << state.depth;
+        return os;
+    }
 };
 
 class Lss_Lrta_Fhat : public Plan
@@ -111,25 +107,25 @@ class Lss_Lrta_Fhat : public Plan
             delete elem;
         }
         delete dummy;
-        delete[] htable;
-        delete[] derrtable;
-        delete[] dtable;
+        // delete[] htable;
+        // delete[] derrtable;
+        // delete[] dtable;
     };
-    
+
     void setStartGoal(State starta, State goala, int bordw, int bordh) override;
 
     int plan(State start) override; //from lss lrta *
 
     void setStatic(unordered_set<StaticObstacle> &s) override;
 
-    void setDynamic(vector<DynamicObstacle> &d) override;
+    // void setDynamic(vector<DynamicObstacle> &d) override;
 
     unordered_set<State> getSTATE() override
     {
         unordered_set<State> ret;
         for (auto i : expandState)
         {
-            State s = State(i.key->x, i.key->y, i.key->time);
+            State s = State(i.key->x, i.key->y, i.key->dx, i.key->dy, i.key->time);
             s.fakec = i.key->cost;
             s.fakeh = i.key->h;
             ret.insert(s);
@@ -160,6 +156,8 @@ class Lss_Lrta_Fhat : public Plan
         size_t ret = 0;
         ret ^= hashf(s->x) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         ret ^= hashf(s->y) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(s->dx) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(s->dy) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         ret ^= hashf(s->time) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         return ret;
     };

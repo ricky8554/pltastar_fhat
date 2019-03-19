@@ -10,12 +10,14 @@
 #include <iomanip>
 
 using namespace std;
+static const double Epsilon = std::numeric_limits<double>::epsilon();
+static const double Threshold = sqrt(Epsilon);
 
 class Plan
 {
   protected:
-    int LOOKAHEAD = 36, Collision_cost = 200, decay = 20; //7 8 36
-    int boardw, boardh, startTime, startDynamic = 1, movingSteps = 1;
+    int LOOKAHEAD = 1000, Collision_cost = 200, decay = 20; //7 8 36
+    int boardw, boardh, startTime, startDynamic = 0, movingSteps = 1;
     double sqrt2 = 1.41421356237;
     float *htable;
     State goal_plan;
@@ -35,7 +37,7 @@ class Plan
     //pltastar
     float *htable_static;
     //fhat
-    double *dtable, *derrtable;
+    float *dtable, *derrtable;
 
   public:
     // Default constructor
@@ -72,40 +74,63 @@ class Plan
         startTime = time;
     }
 
-    void update_dynamic(DynamicObstacle &d, int t)
+    // void update_dynamic(DynamicObstacle &d, int t)
+    // {
+    //     int x;
+    //     for (int i = 0; i < 2; i++)
+    //     {
+    //         x = d.x + cos(d.angle);
+    //         dummy_static_obs.set(x, d.y);
+    //         if (staticObstacles.find(dummy_static_obs) == staticObstacles.end() && x >= 0 && x < boardw)
+    //         {
+    //             d.x = x;
+    //             d.t = t;
+    //             return;
+    //         }
+    //         else
+    //             d.angle = (d.angle) ? 0 : 3.14159265;
+    //     }
+    // }
+
+    void setDynamic(vector<DynamicObstacle> &d1)
     {
-        int x;
-        for (int i = 0; i < 2; i++)
+        dynamicObstacles = d1;
+        for (DynamicObstacle &d : dynamicObstacles)
         {
-            x = d.x + cos(d.angle);
-            dummy_static_obs.set(x, d.y);
-            if (staticObstacles.find(dummy_static_obs) == staticObstacles.end() && x >= 0 && x < boardw)
+            int x, x1, y, y1, movex = d.angle / 10 - 1, movey = d.angle % 10 - 1;
+            if (movey || movex)
             {
-                d.x = x;
-                d.t = t;
-                return;
+                for (int i = 0; i < 2; i += 1)
+                {
+                    x = x1 = d.x;
+                    y = y1 = d.y;
+                    dummy_static_obs.set(x1, y1);
+                    while (staticObstacles.find(dummy_static_obs) == staticObstacles.end() && x1 < boardw && x1 >= 0 && y1 < boardh && y1 >= 0)
+                    {
+                        x = x1;
+                        y = y1;
+                        x1 += movex;
+                        y1 += movey;
+                        dummy_static_obs.set(x1, y1);
+                    }
+                    ((movex == -1) ? d.left : d.right) = x;
+                    ((movey == -1) ? d.bottom : d.top) = y;
+                    movey *= -1;
+                    movex *= -1;
+                }
+                if(!movex)
+                    d.right = d.left = d.x;
+                if(!movey)
+                    d.bottom = d.top = d.y;
             }
             else
-                d.angle = (d.angle) ? 0 : 3.14159265;
-        }
-    }
-
-    void setDynamic(vector<DynamicObstacle> &d)
-    {
-        if (dynamicObstacles.size() != d.size())
-            dynamicObstacles = d;
-
-        int MAX = LOOKAHEAD + startTime;
-        for (int i = startDynamic; i <= MAX; ++i)
-        {
-            for (DynamicObstacle &dynamic : dynamicObstacles)
             {
-                update_dynamic(dynamic, i);
-                dynamicObstacles_map.insert(dynamic);
+                d.right = d.left = d.x;
+                d.bottom = d.top = d.y;
             }
+         
         }
-        startDynamic = MAX + 1;
-        
+       
     };
 
     virtual unordered_set<State> getSTATE()
@@ -168,62 +193,79 @@ class Plan
 
     int cost_d(State *s)
     {
-        dummy_dynamic_obs.set(s->x, s->y, s->time);
-        return (dynamicObstacles_map.find(dummy_dynamic_obs) == dynamicObstacles_map.end()) ? 0 : Collision_cost;
-        // for (DynamicObstacle dynamic : dynamicObstacles)
+        // if(startDynamic >= s->time)
         // {
-
-        //     int x = dynamic.x, y = dynamic.y, left = dynamic.left, right = dynamic.right, t = s->time - startTime;
-        //     int diff = right - left;
-        //     if (diff != 0)
-        //     {
-        //         if (dynamic.angle == 0)
-        //         {
-        //             if (t < right - x)
-        //             {
-        //                 x += t;
-        //             }
-        //             else
-        //             {
-        //                 t -= (right - x);
-
-        //                 int remain = t % diff;
-        //                 int iteration = t / diff;
-        //                 if (iteration % 2 == 0)
-        //                     x = right - remain;
-        //                 else
-        //                     x = left + remain;
-
-        //                 //start from left
-        //             }
-        //         }
-        //         else
-        //         {
-        //             if (x - left > t)
-        //             {
-        //                 x -= t;
-        //             }
-        //             else
-        //             {
-        //                 t -= (x - left);
-        //                 int remain = t % diff;
-        //                 int iteration = t / diff;
-        //                 if (iteration % 2 == 0)
-        //                     x = left + remain;
-        //                 else
-        //                     x = right - remain;
-
-        //                 //start from right
-        //             }
-        //         }
-        //     }
-
-        //     if (x == s->x && y == s->y)
-        //     {
-        //         return Collision_cost;
-        //     }
+        //     dummy_dynamic_obs.set(s->x, s->y, s->time);
+        //     return (dynamicObstacles_map.find(dummy_dynamic_obs) == dynamicObstacles_map.end()) ? 0 : Collision_cost;
         // }
-        // return 0;
+
+        startDynamic = s->time;
+        int collide = 0;
+
+        for (DynamicObstacle &dynamic : dynamicObstacles)
+        {
+          
+            int x = dynamic.x, y = dynamic.y, t = s->time - startTime;
+            int left = dynamic.left, right = dynamic.right, top = dynamic.top, bottom = dynamic.bottom;
+            int diff_horizen = right - left, diff_vetical = top - bottom;
+            int movex = dynamic.angle / 10 - 1, movey = dynamic.angle % 10 - 1;
+            if (diff_horizen || diff_vetical)
+            {
+                int diff,first,second, unit;
+                bool foward;
+                if(diff_horizen)
+                {
+                    unit = x;
+                    first = right;
+                    second = left;
+                    foward = (movex == 1); 
+                    diff = diff_horizen;
+                }
+                else
+                {
+                    unit = y;
+                    first = top;
+                    second = bottom;
+                    foward = (movey == 1); 
+                    diff = diff_vetical;
+                } 
+                int interval = (foward) ? first - unit : unit - second;
+                if (t < interval)
+                {
+                    x += movex * t;
+                    y += movey * t;
+                }
+                else
+                {
+                    t -= interval;
+                    int remain = t % diff;
+                    int iteration = t / diff;
+                    if (iteration % 2 == 0)
+                    {
+                        if(movex)
+                            x = (movex == 1) ? right - remain: left + remain;
+                        if(movey)
+                            y = (movey == 1) ? top - remain: bottom + remain;
+
+                    }
+                    else
+                    {
+                        if(movex)
+                            x = (movex == 1) ? left + remain :right - remain;
+                        if(movey)
+                            y = (movey == 1) ? bottom + remain:top - remain;
+                    }
+                }
+            }
+            
+            // dynamicObstacles_map.emplace(x,y,s->time);
+
+            if (x == s->x && y == s->y)
+            {
+                collide = 1;
+            }
+        }
+        return Collision_cost*collide;
     }
 
     int checkValid(State *s)
@@ -277,8 +319,8 @@ class Plan
 
         int boardsize = boardw * boardh;
         htable = new float[boardsize];
-        dtable = new double[boardsize];
-        derrtable = new double[boardsize];
+        dtable = new float[boardsize];
+        derrtable = new float[boardsize];
         bool checkTable[boardsize];
         for (int i = 0; i < boardsize; i++)
         {
@@ -330,7 +372,7 @@ class Plan
         memcpy(htable_static, htable, sizeof(float) * boardw * boardh);
     }
 
-    void printHtable(int x, int y)
+    void print_table_helper(int x, int y, float *table)
     {
         std::cerr << std::setprecision(0) << std::fixed;
         for (int i = boardh - 1; i >= 0; i--)
@@ -348,152 +390,39 @@ class Plan
                 else
                     cerr << "\033[0;30m";
                 int index = getindex(j, i);
-                if (htable[index] > 1000)
-                {
+                if (table[index] > 1000)
                     cerr << "-01 ";
-                }
-                else if (htable[index] < 10)
-                {
-                    cerr << "00" << htable[index] << " ";
-                }
-                else if (htable[index] < 100)
-                {
-                    cerr << 0 << htable[index] << " ";
-                }
+                else if (table[index] < 10)
+                    cerr << "00" << table[index] << " ";
+                else if (table[index] < 100)
+                    cerr << 0 << table[index] << " ";
                 else
-                {
-                    cerr << htable[index] << " ";
-                }
+                    cerr << table[index] << " ";
             }
             cerr << endl;
         }
         cerr << "\033[0;30m";
-
         std::cerr << std::setprecision(2) << std::fixed;
+    }
+
+    void printHtable(int x, int y)
+    {
+        print_table_helper(x, y, htable);
     }
 
     void printHStable(int x, int y)
     {
-        std::cerr << std::setprecision(0) << std::fixed;
-        for (int i = boardh - 1; i >= 0; i--)
-        {
-            for (int j = 0; j < boardw; j++)
-            {
-                if (x == j && y == i)
-                    cerr << "\033[0;31m";
-                else if (debugstart.x == j && debugstart.y == i)
-                    cerr << "\033[0;34m";
-                else if (debug.find(point(j, i)) != debug.end())
-                    cerr << "\033[0;32m";
-                else if (debug1.find(point(j, i)) != debug.end())
-                    cerr << "\033[0;33m";
-                else
-                    cerr << "\033[0;30m";
-                int index = getindex(j, i);
-                if (htable_static[index] > 1000)
-                {
-                    cerr << "-01 ";
-                }
-                else if (htable_static[index] < 10)
-                {
-                    cerr << "00" << htable_static[index] << " ";
-                }
-                else if (htable_static[index] < 100)
-                {
-                    cerr << 0 << htable_static[index] << " ";
-                }
-                else
-                {
-                    cerr << htable_static[index] << " ";
-                }
-            }
-            cerr << endl;
-        }
-        cerr << "\033[0;30m";
-        std::cerr << std::setprecision(2) << std::fixed;
+        print_table_helper(x, y, htable_static);
     }
 
     void printDtable(int x, int y)
     {
-        std::cerr << std::setprecision(0) << std::fixed;
-        for (int i = boardh - 1; i >= 0; i--)
-        {
-            for (int j = 0; j < boardw; j++)
-            {
-                if (x == j && y == i)
-                    cerr << "\033[0;31m";
-                else if (debugstart.x == j && debugstart.y == i)
-                    cerr << "\033[0;34m";
-                else if (debug.find(point(j, i)) != debug.end())
-                    cerr << "\033[0;32m";
-                else if (debug1.find(point(j, i)) != debug.end())
-                    cerr << "\033[0;33m";
-                else
-                    cerr << "\033[0;30m";
-                int index = getindex(j, i);
-                if (dtable[index] > 1000)
-                {
-                    cerr << "-01 ";
-                }
-                else if (dtable[index] < 10)
-                {
-                    cerr << "00" << dtable[index] << " ";
-                }
-                else if (dtable[index] < 100)
-                {
-                    cerr << 0 << dtable[index] << " ";
-                }
-                else
-                {
-                    cerr << dtable[index] << " ";
-                }
-            }
-            cerr << endl;
-        }
-        cerr << "\033[0;30m";
-        std::cerr << std::setprecision(2) << std::fixed;
+        print_table_helper(x, y, dtable);
     }
 
     void printDerrtable(int x, int y)
     {
-        std::cerr << std::setprecision(0) << std::fixed;
-        for (int i = boardh - 1; i >= 0; i--)
-        {
-            for (int j = 0; j < boardw; j++)
-            {
-                if (x == j && y == i)
-                    cerr << "\033[0;31m";
-                else if (debugstart.x == j && debugstart.y == i)
-                    cerr << "\033[0;34m";
-                else if (debug.find(point(j, i)) != debug.end())
-                    cerr << "\033[0;32m";
-                else if (debug1.find(point(j, i)) != debug.end())
-                    cerr << "\033[0;33m";
-                else
-                    cerr << "\033[0;30m";
-                int index = getindex(j, i);
-                if (derrtable[index] > 1000)
-                {
-                    cerr << "-01"
-                         << " ";
-                }
-                else if (derrtable[index] < 10)
-                {
-                    cerr << "00" << derrtable[index] << " ";
-                }
-                else if (derrtable[index] < 100)
-                {
-                    cerr << 0 << derrtable[index] << " ";
-                }
-                else
-                {
-                    cerr << derrtable[index] << " ";
-                }
-            }
-            cerr << endl;
-        }
-        cerr << "\033[0;30m";
-        std::cerr << std::setprecision(2) << std::fixed;
+        print_table_helper(x, y, derrtable);
     }
 
     // void PLTASTAR_FHAT::constructHtable()

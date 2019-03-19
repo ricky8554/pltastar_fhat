@@ -9,6 +9,11 @@ int Lss_Lrta_Fhat::ASTAR(State requestStart)
     State_LSS_FHAT *state;
     dummy->set(requestStart);
     start = expandState[dummy];
+    if(!start)
+    {
+        start = new State_LSS_FHAT(requestStart.x, requestStart.y, 0, 0, requestStart.time );
+        expandState.insert(start);
+    }
     //+++++++++++++++++++++++++++++++++++++++
     // printHtable(start->x, start->y);
     // cout << "=================DDDDDD" << endl
@@ -120,7 +125,7 @@ int Lss_Lrta_Fhat::ASTAR(State requestStart)
             if(state->x == goal_plan.x && state->y == goal_plan.y)
                 ddiff = 0;
             ddiff = (ddiff < 0) ? 0 : ddiff;
-            ddiff = (ddiff > 0.99) ? 0.99 : ddiff;
+            ddiff = (ddiff >= 1) ? 1 - Threshold : ddiff;
             dsum += ddiff;
 
             // if(dsum != 0)
@@ -219,10 +224,7 @@ int Lss_Lrta_Fhat::plan(State requestStart)
     if (open.empty())
         return 0;
     s = sgoal = pickBest();
-
-    
     update_h();
-
     path = vector<State>();
     while (s != start)
     {
@@ -268,32 +270,3 @@ void Lss_Lrta_Fhat::setStatic(unordered_set<StaticObstacle> &s)
 {
     staticObstacles = s;
 }
-
-// void Lss_Lrta_Fhat::setDynamic(vector<DynamicObstacle> &d)
-// {
-//     dynamicObstacles = d;
-
-//     for (int i = 0; i < dynamicObstacles.size(); i++)
-//     {
-//         int x = dynamicObstacles[i].x, y = dynamicObstacles[i].y;
-//         int x1 = x;
-//         dummy_static_obs.set(x1, y);
-//         while (staticObstacles.find(dummy_static_obs) == staticObstacles.end() && x1 < boardw)
-//         {
-//             dummy_static_obs.set(x1, y);
-//             x1 += 1;
-//         }
-
-//         dynamicObstacles[i].right = x1;
-//         x1 = x;
-//         dummy_static_obs.set(x1, y);
-
-//         while (staticObstacles.find(dummy_static_obs) == staticObstacles.end() && x1 > 0)
-//         {
-//             dummy_static_obs.set(x1, y);
-//             x1 -= 1;
-//         }
-
-//         dynamicObstacles[i].left = x1;
-//     }
-// }

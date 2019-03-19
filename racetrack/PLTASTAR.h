@@ -22,7 +22,7 @@ class State_PLRTA : public State
 
     State_PLRTA(int x, int y, int dx, int dy)
         : State(x, y, dx, dy), cost_s(0), cost_d(0), h_s(0), h_d(0){};
-    State_PLRTA(double x, double y, int dx, int dy, int time)
+    State_PLRTA(int x, int y, int dx, int dy, int time)
         : State(x, y, dx, dy, time), cost_s(0), cost_d(0), h_s(0), h_d(0){};
 
     State_PLRTA(int x, int y, int dx, int dy, double cost_s, double cost_d, double h_s, double h_d, int time)
@@ -35,37 +35,16 @@ class State_PLRTA : public State
         : State(s){};
 
     State_PLRTA(State_PLRTA *s)
-        : State(s->x, s->y,s->dx,s->dy, s->time,s->pred), cost_s(s->cost_s), cost_d(s->cost_d), h_s(s->h_s), h_d(s->h_d), parent(s->parent){};
+        : State(s->x, s->y, s->dx, s->dy, s->time,s->pred), cost_s(s->cost_s), cost_d(s->cost_d), h_s(s->h_s), h_d(s->h_d), parent(s->parent){};
 
     State_PLRTA(){};
 
     ~State_PLRTA(){};
 
-    void set(State &s)
-    {
-        x = s.x;
-        y = s.y;
-        time = s.time;
-    };
-
-    void set(point_t &s)
-    {
-        x = s.x;
-        y = s.y;
-        time = s.time;
-    };
-    void set(double x1, double y1, int time1)
-    {
-        x = x1;
-        y = y1;
-        time = time1;
-    };
 
     bool operator==(const State_PLRTA &s) const
     {
-        if (x == s.x && y == s.y && this->time == s.time)
-            return true;
-        return false;
+        return (x == s.x && y == s.y && dx == s.dx && dy == s.dy && this->time == s.time);
     }
 
     const double f() const override
@@ -87,6 +66,22 @@ class State_PLRTA : public State
     {
         return sqrt((x - d.x) * (x - d.x) + (y - d.y) * (y - d.y));
     }
+
+    friend ostream &operator<<(ostream &os, const State_PLRTA &state)
+    {
+        os << "X:" << setw(3) << left << state.x
+           << "Y:" << setw(3) << left << state.y
+           << "x:" << setw(3) << left << state.dx
+           << "y:" << setw(3) << left << state.dy
+           << "G:" << setw(3) << left << state.cost_s
+           << "H:" << setw(3) << left << state.h_s
+           << "g:" << setw(3) << left << state.cost_d
+           << "h:" << setw(3) << left << state.h_d
+           << "F:" << setw(3) << left << state.f()
+           << "T:" << setw(4) << left << state.time
+           << "D:" << state.depth;
+        return os;
+    }
 };
 
 struct State_PLRTA_Static : public State_PLRTA
@@ -102,19 +97,21 @@ struct State_PLRTA_Static : public State_PLRTA
     {
         x = s->x;
         y = s->y;
+        dx = s->dx;
+        dy = s->dy;
     };
 
     void set(point s)
     {
         x = s.x;
         y = s.y;
+        dx = s.dx;
+        dy = s.dy;
     };
 
     bool operator==(const State_PLRTA_Static &s) const
     {
-        if (x == s.x && y == s.y)
-            return true;
-        return false;
+        return (x == s.x && y == s.y && dx == s.dx && dy == s.dy);
     }
 
     const double f() const
@@ -160,9 +157,9 @@ class PLTASTAR : public Plan
         }
         delete dummy;
         delete dummy_static;
-        delete[] htable_base;
-        delete[] derrtablebase;
-        delete[] dtablebase;
+        // delete[] htable;
+        // delete[] derrtable;
+        // delete[] dtable;
     };
 
     void setStartGoal(State starta, State goala, int bordw, int bordh) override;
@@ -171,7 +168,7 @@ class PLTASTAR : public Plan
 
     void setStatic(unordered_set<StaticObstacle> &s) override;
 
-    void setDynamic(vector<DynamicObstacle> &d) override;
+    // void setDynamic(vector<DynamicObstacle> &d) override;
 
     unordered_set<State> getSTATE() override
     {
@@ -212,6 +209,8 @@ class PLTASTAR : public Plan
         size_t ret = 0;
         ret^= hashf(s->x) + 0x9e3779b9 + (ret<< 6) + (ret>> 2);
         ret^= hashf(s->y) + 0x9e3779b9 + (ret<< 6) + (ret>> 2);
+        ret ^= hashf(s->dx) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(s->dy) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         ret^= hashf(s->time) + 0x9e3779b9 + (ret<< 6) + (ret>> 2);
         return ret;
     };
@@ -221,6 +220,8 @@ class PLTASTAR : public Plan
         size_t ret = 0;
         ret^= hashf(s->x) + 0x9e3779b9 + (ret<< 6) + (ret>> 2);
         ret^= hashf(s->y) + 0x9e3779b9 + (ret<< 6) + (ret>> 2);
+        ret ^= hashf(s->dx) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(s->dy) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         return ret;
     };
 

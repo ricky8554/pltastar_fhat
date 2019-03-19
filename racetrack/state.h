@@ -4,7 +4,6 @@
 #include <cmath>
 #include <iostream>
 #include <unordered_set>
-#include <vector>
 
 struct point_t
 {
@@ -22,6 +21,7 @@ struct point_t
         dy = dy1;
         time = t1;
     };
+    
     point_t(){};
 
     bool operator==(const point_t &s) const
@@ -54,8 +54,6 @@ struct hash<point_t>
         size_t ret = 0;
         ret ^= hashf(c.x) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         ret ^= hashf(c.y) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
-        ret ^= hashf(c.dx) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
-        ret ^= hashf(c.dy) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         ret ^= hashf(c.time) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         return ret;
     }
@@ -81,6 +79,34 @@ class State
         : x(-1), y(-1), dx(-1), dy(-1), time(0){};
 
     virtual ~State(){};
+
+    void set(State &s)
+    {
+        x = s.x;
+        y = s.y;
+        dx = s.dx;
+        dy = s.dy;
+        time = s.time;
+    };
+
+    void set(point_t &s)
+    {
+        x = s.x;
+        y = s.y;
+        dx = s.dx;
+        dy = s.dy;
+        time = s.time;
+    };
+
+    void set(int x1, int y1, int dx1, int dy1, int time1)
+    {
+        x = x1;
+        y = y1;
+        dx = dx1;
+        dy = dy1;
+        time = time1;
+    };
+
 
     bool operator==(const State &s) const
     {
@@ -116,7 +142,7 @@ struct movement
     movement()
         : heading(0),speed(0),steps(0){};
 
-    movement(int heading, int speed, int step)
+    movement(double heading, double speed, int step)
         : heading(heading),speed(speed),steps(step){};
 };
 
@@ -239,9 +265,22 @@ struct hash<State>
         size_t ret = 0;
         ret ^= hashf(c.x) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         ret ^= hashf(c.y) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
-        ret ^= hashf(c.dx) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
-        ret ^= hashf(c.dy) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         ret ^= hashf(c.time) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        return ret;
+    }
+};
+template <>
+struct hash<DynamicObstacle>
+{
+    hash()
+    {
+    }
+    size_t operator()(const DynamicObstacle &c) const
+    {
+        static hash<int> hashf;
+        size_t ret = 0;
+        ret ^= hashf(c.x) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(c.y) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         return ret;
     }
 };

@@ -4,23 +4,41 @@
 #include <algorithm>
 using namespace std;
 
+#define DEBUG false
+#define DEBUGCHILD false
+#define DEBUGINOPEN false
+#define DEBUGTABLE true
+#define DEBUGDABLE true
+
 int PLTASTAR_FHAT::ASTAR(State requestStart)
 {
     State_PLRTA_FHAT *state;
     dummy->set(requestStart);
     start = expandState[dummy];
+    if(!start)
+    {
+        start = new State_PLRTA_FHAT(requestStart.x, requestStart.y, 0, 0, 0, 0, requestStart.time );
+        expandState.insert(start);
+    }
+                            
 
     //+++++++++++++++++++++++++++++++++++++++
-    // printHtable(start->x, start->y);
-    // cout << "=================DDDDDD" << endl
-    //      << endl;
-    // printDtable(start->x, start->y);
-    // cout << "=================RRRR" << endl;
-    // printDerrtable(start->x, start->y);
-    // cout << "=================+++++++++++++" << endl;
-    // debug.clear();
-    // debug1.clear();
-    // debugstart = requestStart;
+    if (DEBUG && DEBUGTABLE)
+    {
+        printHStable(start->x, start->y);
+        cout << "=================DDDDDD" << endl
+             << endl;
+        if (DEBUGDABLE)
+        {
+            printDtable(start->x, start->y);
+            cout << "=================RRRR" << endl;
+            printDerrtable(start->x, start->y);
+            cout << "=================+++++++++++++" << endl;
+        }
+        debug.clear();
+        debug1.clear();
+        debugstart = requestStart;
+    }
     //++++++++++++++++++++++++++++++++++++++
 
     auto it = expandState.begin();
@@ -36,6 +54,7 @@ int PLTASTAR_FHAT::ASTAR(State requestStart)
         }
         else
         {
+
             elem->cost_s = DBL_MAX;
             elem->cost_d = DBL_MAX;
             elem->h_d = (elem->h_d > decay) ? elem->h_d - decay : 0;
@@ -64,13 +83,17 @@ int PLTASTAR_FHAT::ASTAR(State requestStart)
     opencheck.insert(start);
     double dsum = 0, hsum = 0;
 
-    // cout << "\033[0;31m" << "DERR " << derr  << " HERR " << herr << "\033[0;30m" << endl;
+    if (DEBUG)
+        cout << "\033[0;31m"
+             << "DERR " << derr << " HERR " << herr << "\033[0;30m" << endl;
 
     do
     {
         state = open.pop();
-
-        // cout << "\033[0;33m" << "STATE: " << "\033[0;30m" << *state << endl;
+        if (DEBUG)
+            cout << "\033[0;33m"
+                 << "STATE: "
+                 << "\033[0;30m" << *state << endl;
 
         opencheck.erase(state);
         close.insert(state);
@@ -109,13 +132,6 @@ int PLTASTAR_FHAT::ASTAR(State requestStart)
                             child_state->parent = state;
                             child_state->depth = state->depth + 1;
                             child_state->h_error = herr * (child_state->derr / (1 - derr));
-                            
-                            //+++++++++++++++++++++++++++++++++++++++
-                            if(isGoal(child_state) && dcost < 20 && (touch_goal == NULL || touch_goal->depth < child_state->depth))
-                            {
-                                touch_goal = child_state;
-                            }
-                            //+++++++++++++++++++++++++++++++++++++++
 
                             if (!opencheck.find(child_state))
                             {
@@ -129,8 +145,10 @@ int PLTASTAR_FHAT::ASTAR(State requestStart)
                             }
                         }
                     }
-
-                    // cout << "\033[0;35m" << "CHILD: " << "\033[0;30m" << *child_state << endl;
+                    if (DEBUG && DEBUGCHILD)
+                        cout << "\033[0;35m"
+                             << "CHILD: "
+                             << "\033[0;30m" << *child_state << endl;
                     if (!best_child || best_child->f_static() > child_state->f_static())
                         best_child = child_state;
                 }
@@ -145,21 +163,23 @@ int PLTASTAR_FHAT::ASTAR(State requestStart)
 
             double ddiff = best_child->d + 1 - state->d;
             //double ddiff = getDistance(best_child) + 1 - getDistance(state);
-            if(state->x == goal_plan.x && state->y == goal_plan.y)
+            if (state->x == goal_plan.x && state->y == goal_plan.y)
                 ddiff = 0;
             // if (best_child->x == state->x && best_child->y == state->y)
             //     ddiff = 0;
             // else
             //     ddiff = best_child->d + 1 - state->d;
             ddiff = (ddiff < 0) ? 0 : ddiff;
-            ddiff = (ddiff > 0.99999) ? 0.99999 : ddiff;
+            ddiff = (ddiff >= 1) ? 1 - Threshold : ddiff;
             dsum += ddiff;
+            if (DEBUG)
+            {
+                if (ddiff != 0)
+                    cout << "warning" << endl;
 
-            // if(dsum != 0)
-            //   cout << "warning" << endl;
-
-            // if(hsum != 0)
-            //   cout << "warning1" << endl;
+                if (fdiff != 0)
+                    cout << "warning1" << endl;
+            }
         }
 
     } while (expansions < LOOKAHEAD); //check collision for goal
@@ -178,7 +198,7 @@ int PLTASTAR_FHAT::update_h_static(PQueue<State_PLRTA_FHAT *> open1, HashSet<Sta
     PQueue<State_PLRTA_FHAT_Static *> open;
     open.setUpCompare(&compare_static);
     open1.setUpCompare(&compare_static);
-    
+
     for (auto it : close1)
     {
         dummy_static->set(it.key);
@@ -209,7 +229,7 @@ int PLTASTAR_FHAT::update_h_static(PQueue<State_PLRTA_FHAT *> open1, HashSet<Sta
                 double cost_s = 0;
                 int index = getindex(dummy_static->x, dummy_static->y);
                 State_PLRTA_FHAT_Static *state = opencheck[dummy_static];
-                if(!state)
+                if (!state)
                     state = close[dummy_static];
 
                 for (auto i : state1->pred)
@@ -252,6 +272,7 @@ int PLTASTAR_FHAT::update_h_static(PQueue<State_PLRTA_FHAT *> open1, HashSet<Sta
     }
 
     // open.reBuild();
+    unordered_set<int> check;
 
     while (close.size() != 0 && !open.empty())
     {
@@ -270,17 +291,24 @@ int PLTASTAR_FHAT::update_h_static(PQueue<State_PLRTA_FHAT *> open1, HashSet<Sta
             if (pred_state)
             {
                 State_PLRTA_FHAT_Static *temp = opencheck[dummy_static];
-                if(temp)
+                if (temp)
                     pred_state = temp;
 
                 double pred_h = cost(pred_state, state) + htable_static[index1];
                 int index = getindex(pred_state->x, pred_state->y);
-                if (htable_static[index] > pred_h)
+                if (htable_static[index] >= pred_h)
                 {
+                    // check.insert(index);
                     htable_static[index] = pred_state->h_s = pred_h;
                     int add = (state->x == pred.x && state->y == pred.y) ? 0 : 1;
-                    derrtable[index] = state->derr; //change
-                    dtable[index] = state->d + add; //change
+                    
+                    // if(check.find(index) == check.end() || derrtable[index] > state->derr)
+                    // {
+                        derrtable[index] = state->derr; //change
+                        dtable[index] = state->d + add; //change
+                    // }
+                    
+                    
 
                     if (!temp)
                     {
@@ -324,6 +352,7 @@ int PLTASTAR_FHAT::update_h_dynamic()
         {
             dummy->set(pred);
             State_PLRTA_FHAT *pred_state = close[dummy];
+            // getindex(state->x, state->y);
             if (pred_state)
             {
                 double dcost = cost_d(pred_state) + state->h_d;
@@ -349,13 +378,20 @@ int PLTASTAR_FHAT::update_h_dynamic()
 State_PLRTA_FHAT *PLTASTAR_FHAT::pickBest()
 {
     double maxh = open.top()->fhat();
-
-    // for(int i = 0; i< open.size(); i++)
-    //     cout << "\033[0;34m" << "INOPEN: " << "\033[0;30m" << *(open[i]) << endl;
+    if (DEBUG && DEBUGINOPEN)
+    {
+        for (int i = 0; i < open.size(); i++)
+            cout << "\033[0;34m"
+                 << "INOPEN: "
+                 << "\033[0;30m" << *(open[i]) << endl;
+    }
 
     while (!open.empty() && open.top()->fhat() <= maxh)
     {
-        // cout << "\033[0;31m" << "CANDIT: " << "\033[0;30m" << *(open.top()) << endl;
+        if (DEBUG)
+            cout << "\033[0;31m"
+                 << "CANDIT: "
+                 << "\033[0;30m" << *(open.top()) << endl;
         goalQ.push(open.pop());
     }
 
@@ -366,7 +402,6 @@ State_PLRTA_FHAT *PLTASTAR_FHAT::pickBest()
             s = goalQ.top();
         open.push(goalQ.pop());
     } while (!goalQ.empty());
-    // cerr << s->x << " " << s->y << " " << s->time << " " << s->depth << " final" << endl;
 
     return s;
 }
@@ -386,37 +421,17 @@ int PLTASTAR_FHAT::plan(State requestStart)
     update_h_dynamic();
 
     path = vector<State>();
-    //cerr << "CHOSE: " << s->x << " " << s->y << " " << s->cost_s << " " << s->cost_d << " " << s->h_s << " " << s->h_d << " " << s->f() << " " << s->time << endl;
-
-    bool reach_goal = false;
-    
 
     while (s != start)
     {
-        // cout << "\033[0;32m" << "CHOOSE: " << "\033[0;30m" << *s << endl;
-        //+++++++++++++++
-        if(isGoal(s))
-            reach_goal = true;
-        //+++++++++++++++
+        if (DEBUG)
+            cout << "\033[0;32m"
+                 << "CHOOSE: "
+                 << "\033[0;30m" << *s << endl;
 
         path.push_back(*s);
         s = s->parent;
     }
-
-    //+++++++++++++++
-    if( !reach_goal && touch_goal != NULL)
-    {
-        s = sgoal = touch_goal;
-        path.clear();
-        while (s != start)
-        {
-            path.push_back(*s);
-            s = s->parent;
-        }
-    }
-    touch_goal = NULL;
-    //+++++++++++++++
-    
 
     // start = sgoal;
     return !(start == goal);
@@ -460,51 +475,6 @@ void PLTASTAR_FHAT::setStatic(unordered_set<StaticObstacle> &s)
 {
     staticObstacles = s;
 }
-
-// void PLTASTAR_FHAT::setDynamic(vector<DynamicObstacle> &d)
-// {
-//     dynamicObstacles = d;
-
-//     for (int i = 0; i < dynamicObstacles.size(); i++)
-//     {
-//         int x = dynamicObstacles[i].x, y = dynamicObstacles[i].y;
-//         int x1 = x;
-
-//         if(x1 == boardw - 1)
-//         {
-//             dynamicObstacles[i].right = boardw - 1;
-//         }
-//         else
-//         {
-//             dummy_static_obs.set(x1, y);
-//             while (staticObstacles.find(dummy_static_obs) == staticObstacles.end() && x1 <= boardw - 1)
-//             {
-//                 x1 += 1;
-//                 dummy_static_obs.set(x1, y);
-//             }
-
-//             dynamicObstacles[i].right = x1 - 1;
-//         }
-
-
-//         x1 = x;
-        
-//         if(x1 == 0)
-//         {
-//             dynamicObstacles[i].left = 0;
-//         }
-//         else
-//         {
-//             dummy_static_obs.set(x1, y);
-//             while (staticObstacles.find(dummy_static_obs) == staticObstacles.end() && x1 >= 0)
-//             {
-//                 x1 -= 1;
-//                 dummy_static_obs.set(x1, y);
-//             }
-//             dynamicObstacles[i].left = x1 + 1;
-//         }
-//     }
-// }
 
 double PLTASTAR_FHAT::getDerr(State_PLRTA_FHAT *s)
 {

@@ -7,14 +7,16 @@
 #include <mutex>
 #include <cmath>
 #include "LSS_LRTA.h"
-// #include "PLTASTAR.h"
-// #include "LSS_LRTA_FHAT.h"
-// #include "PLTASTAR_FHAT.h"
+#include "LSS_LRTA_FHAT.h"
+#include "PLTASTAR.h"
+#include "PLTASTAR_FHAT.h"
+#include "PLTASTAR_MOD.h"
+#include "PLTASTAR_FHAT_MOD.h"
 #include "state.h"
 
 using namespace std;
 
-#define rate 30
+#define rate 10
 #define bord 100
 
 
@@ -24,6 +26,7 @@ class Obstacle
   private:
     vector<DynamicObstacle> dynamicObstacles;
     unordered_set<StaticObstacle> staticObstacles;
+    StaticObstacle dummy_static_obs;
     vector<State> path;
     State start, goal;
     Plan* planner = 0;
@@ -34,6 +37,9 @@ class Obstacle
     int plan;
     int index;
     int mode;//0 is lsslrtastar 1 is plrtastar
+    bool mode_dynamic = false;
+    int dynamic_lookahead = 1;
+    int node_per_step = 2000;
     void MoveObstacle();
     
     unordered_set<State> map;
@@ -54,6 +60,7 @@ class Obstacle
     };
 
     int MoveObstacle(int node,int LookAhead);
+    
 
     void addDynamicObstacle(DynamicObstacle);
 
@@ -107,13 +114,12 @@ class Obstacle
         dynamicObstacles = a;
     };
 
-    void initialize();
+    void initialize(int LOOKAHEAD);
 
-    void initialize1(int a);
 
-    void update();
+    void update(bool graph_mode);
 
-    void update1();
+    void update_dynamic(DynamicObstacle &d);
 
     void setMode(int MODE)
     {
