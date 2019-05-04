@@ -24,7 +24,7 @@ using namespace std;
 
 Camera cam;
 Obstacle obstacle;
-vector<Dynamicxy> dynamicObstacles;
+vector<DynamicObstacle> dynamicObstacles;
 unordered_set<StaticObstacle> staticObstacles;
 GLuint list;
 State goal;
@@ -117,7 +117,7 @@ void display(void)
         glVertex2d(x, y + 1);
         glEnd();
     }
-    
+
     double maxstate = 0;
     double minstate = 1000000;
     for (const auto &elem : state)
@@ -150,17 +150,6 @@ void display(void)
     glCallList(list);
 
     glColor3d(1, 0, 0);
-    getDynamicObstacle();
-    //glBegin(GL_POINTS);
-    for (Dynamicxy dynaimcobs : dynamicObstacles)
-    {
-        glBegin(GL_TRIANGLE_FAN);
-        double x = dynaimcobs.x + 0.5, y = dynaimcobs.y + 0.5, radius = dynaimcobs.radius - 0.5;
-        glVertex2f(x, y);
-        for (int i = 0; i <= 360; i++)
-            glVertex2f(radius * cos(PIR * i) + x, radius * sin(PIR * i) + y);
-        glEnd();
-    }
 
     glBegin(GL_TRIANGLE_FAN);
 
@@ -182,6 +171,31 @@ void display(void)
     for (int i = 0; i <= 360; i++)
         glVertex2f(radius * cos(PIR * i) + x, radius * sin(PIR * i) + y);
     glEnd();
+
+    getDynamicObstacle();
+    //glBegin(GL_POINTS);
+    glColor3d(1, 0, 0);
+    for (DynamicObstacle &dynaimcobs : dynamicObstacles)
+    {
+        glBegin(GL_TRIANGLE_FAN);
+        double x = dynaimcobs.x + 0.5, y = dynaimcobs.y + 0.5, radius = 0.5;
+        glVertex2f(x, y);
+        for (int i = 0; i <= 360; i++)
+            glVertex2f(radius * cos(PIR * i) + x, radius * sin(PIR * i) + y);
+        glEnd();
+        double dhead = dynaimcobs.estimate_h, dspeed = dynaimcobs.estimate_s;
+        for (int i = 1; i < 6; i++)
+        {
+            double dyx = cos(dhead) * dspeed * i + dynaimcobs.x + 0.5, dyy = sin(dhead) * dspeed * i + dynaimcobs.y + 0.5;
+            // double powt = pow(1.3, i); //change 1.2 to any
+            double var = (1 + 0.1 * i) * (1 + 0.1 * i);
+            double radius = sqrt(var * var);
+            glBegin(GL_LINE_LOOP);
+            for (int i = 0; i <= 360; i++)
+                glVertex2f(radius * cos(PIR * i) + dyx, radius * sin(PIR * i) + dyy);
+            glEnd();
+        }
+    }
 }
 
 static void error_callback(int error, const char *description)
@@ -206,32 +220,6 @@ void setObstacles(int argc, char *argv[])
     obstacle.setMode(0);
     if (argc > 1)
     {
-        if (!strcmp(argv[1], "LSS_LRTA") || !strcmp(argv[1], "0"))
-            obstacle.setMode(0);
-        else if (!strcmp(argv[1], "PLRTA_STAR") || !strcmp(argv[1], "1"))
-            obstacle.setMode(1);
-        else if (!strcmp(argv[1], "LSS_LRTA_FHAT") || !strcmp(argv[1], "2"))
-            obstacle.setMode(2);
-        else if (!strcmp(argv[1], "PLRTA_STAR_FHAT") || !strcmp(argv[1], "3"))
-            obstacle.setMode(3);
-        else if (!strcmp(argv[1], "PLRTA_STAR_MOD") || !strcmp(argv[1], "4"))
-            obstacle.setMode(4);
-        else if (!strcmp(argv[1], "PLRTA_STAR_FHAT_MOD") || !strcmp(argv[1], "5"))
-            obstacle.setMode(5);
-        else if (!strcmp(argv[1], "DYNAMIC_LSS_LRTA") || !strcmp(argv[1], "6"))
-            obstacle.setMode(6);
-        else if (!strcmp(argv[1], "DYNAMIC_PLRTA_STAR") || !strcmp(argv[1], "7"))
-            obstacle.setMode(7);
-        else if (!strcmp(argv[1], "DYNAMIC_LSS_LRTA_FHAT") || !strcmp(argv[1], "8"))
-            obstacle.setMode(8);
-        else if (!strcmp(argv[1], "DYNAMIC_PLRTA_STAR_FHAT") || !strcmp(argv[1], "9"))
-            obstacle.setMode(9);
-        else if (!strcmp(argv[1], "DYNAMIC_PLRTA_STAR_MOD") || !strcmp(argv[1], "10"))
-            obstacle.setMode(10);
-        else if (!strcmp(argv[1], "DYNAMIC_PLRTA_STAR_FHAT_MOD") || !strcmp(argv[1], "11"))
-            obstacle.setMode(11);
-        else
-            obstacle.setMode(0);
     }
     else
         obstacle.setMode(0);
@@ -240,7 +228,53 @@ void setObstacles(int argc, char *argv[])
     for (int i = 1; i < argc; i++)
     {
         if (!strcmp(argv[i], "-map"))
+        {
             map = true;
+        }
+        else if(!strcmp(argv[i], "-a"))
+        {
+            if (!strcmp(argv[i+1], "LSS_LRTA") || !strcmp(argv[i+1], "0"))
+                obstacle.setMode(0);
+            else if(!strcmp(argv[i+1], "-1"))
+                obstacle.setMode(-1);
+            else if (!strcmp(argv[i+1], "PLRTA_STAR") || !strcmp(argv[i+1], "1"))
+                obstacle.setMode(1);
+            else if (!strcmp(argv[i+1], "LSS_LRTA_FHAT") || !strcmp(argv[i+1], "2"))
+                obstacle.setMode(2);
+            else if (!strcmp(argv[i+1], "PLRTA_STAR_FHAT") || !strcmp(argv[i+1], "3"))
+                obstacle.setMode(3);
+            else if (!strcmp(argv[i+1], "PLRTA_STAR_MOD") || !strcmp(argv[i+1], "4"))
+                obstacle.setMode(4);
+            else if (!strcmp(argv[i+1], "PLRTA_STAR_FHAT_MOD") || !strcmp(argv[i+1], "5"))
+                obstacle.setMode(5);
+            else if (!strcmp(argv[i+1], "DYNAMIC_LSS_LRTA") || !strcmp(argv[i+1], "6"))
+                obstacle.setMode(6);
+            else if (!strcmp(argv[i+1], "DYNAMIC_PLRTA_STAR") || !strcmp(argv[i+1], "7"))
+                obstacle.setMode(7);
+            else if (!strcmp(argv[i+1], "DYNAMIC_LSS_LRTA_FHAT") || !strcmp(argv[i+1], "8"))
+                obstacle.setMode(8);
+            else if (!strcmp(argv[i+1], "DYNAMIC_PLRTA_STAR_FHAT") || !strcmp(argv[i+1], "9"))
+                obstacle.setMode(9);
+            else if (!strcmp(argv[i+1], "DYNAMIC_PLRTA_STAR_MOD") || !strcmp(argv[i+1], "10"))
+                obstacle.setMode(10);
+            else if (!strcmp(argv[i+1], "DYNAMIC_PLRTA_STAR_FHAT_MOD") || !strcmp(argv[i+1], "11"))
+                obstacle.setMode(11);
+            else
+                obstacle.setMode(0);
+        }
+        else if(!strcmp(argv[i], "-l"))
+        {
+            obstacle.setLookAhead(stoi(argv[i+1]));
+        }
+        else if(!strcmp(argv[i], "-r"))
+        {
+            obstacle.setRate(stoi(argv[i+1]));
+        }
+        else if(!strcmp(argv[i], "-help"))
+        {
+            cerr << "<-r int> updaterate\n<-l int> lookahead size\n<-a int/string> algorithm\n<-help> for help" << endl;
+            exit(-1);
+        }
     }
 
     // double maxsp, minsp, r, x, y;
@@ -263,8 +297,7 @@ void setObstacles(int argc, char *argv[])
                     obstacle.addStaticObstacle(j, i);
                 else if (c == '!')
                 {
-                    // obstacle.addDynamicObstacle(10, 10, 1, j, i);
-                   
+                    // obstacle.addDynamicObstacle(10, 10, 1,c, j, i);
                 }
                 else if (c == 'S')
                 {
@@ -285,16 +318,16 @@ void setObstacles(int argc, char *argv[])
         cin >> boardw >> boardh >> num_dynamic;
         cout << boardw << " " << boardh << endl;
         obstacle.setBoard(boardw, boardh);
-        for(int i = 0; i< num_dynamic; i++)
+        for (int i = 0; i < num_dynamic; i++)
         {
-            int dx, dy, instructions,steps;
+            int dx, dy, instructions, steps;
             double heading, speed;
             cin >> dx >> dy >> instructions;
-            DynamicObstacle d(dx,dy,instructions);
-            for(int k = 0; k < instructions; k++)
+            DynamicObstacle d(dx, dy, instructions);
+            for (int k = 0; k < instructions; k++)
             {
                 cin >> heading >> speed >> steps;
-                d.instructions.emplace_back(heading , speed , steps);
+                d.instructions.emplace_back(heading, speed, steps);
             }
             d.remain = d.instructions[0].steps;
             d.heading = d.instructions[0].heading;

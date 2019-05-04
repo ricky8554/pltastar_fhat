@@ -4,13 +4,13 @@
 #include <algorithm>
 using namespace std;
 
-#define DEBUG true
+#define DEBUG false
 #define DEBUGCHILD false
 #define DEBUGTABLE true
 
 int PLTASTAR::ASTAR(State requestStart)
 {
-    cerr << "expand state size: " << expandState.size() << endl;
+   
     State_PLRTA *state;
     dummy->set(requestStart);
     start = expandState[dummy];
@@ -42,7 +42,7 @@ int PLTASTAR::ASTAR(State requestStart)
         {
             elem->cost_s = DBL_MAX;
             elem->cost_d = DBL_MAX;
-            // elem->h_d = (elem->h_d > decay) ? elem->h_d - decay : 0;
+            elem->h_d = (elem->h_d > decay) ? elem->h_d - decay : 0;
             elem->h_s = h_value_static(elem);
         }
     }
@@ -67,10 +67,12 @@ int PLTASTAR::ASTAR(State requestStart)
     do
     {
         state = open.pop();
+        if(max_time && max_time == state->time)
+            break;
         if (DEBUG)
-            cout << "\033[0;33m"
+            cout << "\033[0;33m" 
                  << "STATES: "
-                 << "\033[0;30m" << *state << endl;
+                 << "\033[0;30m" << *state << " exp " << expansions << endl;
         opencheck.erase(state);
         close.insert(state);
         expansions += 1;
@@ -259,15 +261,8 @@ int PLTASTAR::update_h_dynamic()
         it.key->h_d = DBL_MAX;
     }
 
-    // for(int i = 0; i< open.size(); i++)
-    // {
-    //     State_PLRTA * p = open[i];
-    //     p->h_s = h_value_static(p);
-    // }
-
     open.setUpCompare(&compare2);
-    // open.setUpCompare(&compare);
-
+    
     while (close.size() != 0 && !open.empty())
     {
         State_PLRTA *state = open.pop();

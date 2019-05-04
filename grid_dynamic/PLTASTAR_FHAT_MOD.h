@@ -18,6 +18,8 @@ class State_PLRTA_FHAT_MOD : public State
 {
   public:
     mutable double cost_s, cost_d, h_s, h_d, derr, h_error, d;
+    int frontier_time;
+    double f_c;
     State_PLRTA_FHAT_MOD *parent;
 
     State_PLRTA_FHAT_MOD(double x, double y)
@@ -237,7 +239,9 @@ class PLTASTAR_FHAT_MOD : public Plan
     mutex mtx;
 
   private:
-    double herr = 0, derr = 0;
+    double herr = 0, derr = 0, herr_new= 0;;
+    double qtime_avg,heurristic_factor;
+    unsigned long accumulate_hurristic, post_accumulate_hurristic;
     State_PLRTA_FHAT_MOD *start, *goal, *dummy;
     State_PLRTA_FHAT_MOD_Static *dummy_static;
     PQueue<State_PLRTA_FHAT_MOD *> open;
@@ -284,6 +288,16 @@ class PLTASTAR_FHAT_MOD : public Plan
         return s1.f() < s2.f();
     };
 
+
+    static unsigned int comparet(State_PLRTA_FHAT_MOD *&s1, State_PLRTA_FHAT_MOD *&s2)
+    {
+        return s1->time > s2->time; //chage to h_hat?
+    };
+
+    static unsigned int comparet(State_PLRTA_FHAT_MOD &s1, State_PLRTA_FHAT_MOD &s2)
+    {
+        return s1.time > s2.time; //chage to h_hat?
+    };
 
     static unsigned int compare1(State_PLRTA_FHAT_MOD *&s1, State_PLRTA_FHAT_MOD *&s2)
     {

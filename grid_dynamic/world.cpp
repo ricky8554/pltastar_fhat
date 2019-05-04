@@ -187,11 +187,12 @@ void display(void)
         for (int i = 1; i < 6; i++)
         {
             double dyx = cos(dhead) * dspeed * i + dynaimcobs.x + 0.5, dyy = sin(dhead) * dspeed * i + dynaimcobs.y + 0.5;
-            double powt = pow(1.3, i); //change 1.2 to any
-            double range = 0.5 * powt;
+            // double powt = pow(1.3, i); //change 1.2 to any
+            double var = (1 + 0.1 * i) * (1 + 0.1 * i);
+            double radius = sqrt(var * var);
             glBegin(GL_LINE_LOOP);
             for (int i = 0; i <= 360; i++)
-                glVertex2f(range * cos(PIR * i) + dyx, range * sin(PIR * i) + dyy);
+                glVertex2f(radius * cos(PIR * i) + dyx, radius * sin(PIR * i) + dyy);
             glEnd();
         }
     }
@@ -219,32 +220,6 @@ void setObstacles(int argc, char *argv[])
     obstacle.setMode(0);
     if (argc > 1)
     {
-        if (!strcmp(argv[1], "LSS_LRTA") || !strcmp(argv[1], "0"))
-            obstacle.setMode(0);
-        else if (!strcmp(argv[1], "PLRTA_STAR") || !strcmp(argv[1], "1"))
-            obstacle.setMode(1);
-        else if (!strcmp(argv[1], "LSS_LRTA_FHAT") || !strcmp(argv[1], "2"))
-            obstacle.setMode(2);
-        else if (!strcmp(argv[1], "PLRTA_STAR_FHAT") || !strcmp(argv[1], "3"))
-            obstacle.setMode(3);
-        else if (!strcmp(argv[1], "PLRTA_STAR_MOD") || !strcmp(argv[1], "4"))
-            obstacle.setMode(4);
-        else if (!strcmp(argv[1], "PLRTA_STAR_FHAT_MOD") || !strcmp(argv[1], "5"))
-            obstacle.setMode(5);
-        else if (!strcmp(argv[1], "DYNAMIC_LSS_LRTA") || !strcmp(argv[1], "6"))
-            obstacle.setMode(6);
-        else if (!strcmp(argv[1], "DYNAMIC_PLRTA_STAR") || !strcmp(argv[1], "7"))
-            obstacle.setMode(7);
-        else if (!strcmp(argv[1], "DYNAMIC_LSS_LRTA_FHAT") || !strcmp(argv[1], "8"))
-            obstacle.setMode(8);
-        else if (!strcmp(argv[1], "DYNAMIC_PLRTA_STAR_FHAT") || !strcmp(argv[1], "9"))
-            obstacle.setMode(9);
-        else if (!strcmp(argv[1], "DYNAMIC_PLRTA_STAR_MOD") || !strcmp(argv[1], "10"))
-            obstacle.setMode(10);
-        else if (!strcmp(argv[1], "DYNAMIC_PLRTA_STAR_FHAT_MOD") || !strcmp(argv[1], "11"))
-            obstacle.setMode(11);
-        else
-            obstacle.setMode(0);
     }
     else
         obstacle.setMode(0);
@@ -253,7 +228,57 @@ void setObstacles(int argc, char *argv[])
     for (int i = 1; i < argc; i++)
     {
         if (!strcmp(argv[i], "-map"))
+        {
             map = true;
+        }
+        else if(!strcmp(argv[i], "-a"))
+        {
+            if (!strcmp(argv[i+1], "LSS_LRTA") || !strcmp(argv[i+1], "0"))
+                obstacle.setMode(0);
+            else if(!strcmp(argv[i+1], "-1"))
+                obstacle.setMode(-1);
+            else if (!strcmp(argv[i+1], "PLRTA_STAR") || !strcmp(argv[i+1], "1"))
+                obstacle.setMode(1);
+            else if (!strcmp(argv[i+1], "LSS_LRTA_FHAT") || !strcmp(argv[i+1], "2"))
+                obstacle.setMode(2);
+            else if (!strcmp(argv[i+1], "PLRTA_STAR_FHAT") || !strcmp(argv[i+1], "3"))
+                obstacle.setMode(3);
+            else if (!strcmp(argv[i+1], "PLRTA_STAR_MOD") || !strcmp(argv[i+1], "4"))
+                obstacle.setMode(4);
+            else if (!strcmp(argv[i+1], "PLRTA_STAR_FHAT_MOD") || !strcmp(argv[i+1], "5"))
+                obstacle.setMode(5);
+            else if (!strcmp(argv[i+1], "DYNAMIC_LSS_LRTA") || !strcmp(argv[i+1], "6"))
+                obstacle.setMode(6);
+            else if (!strcmp(argv[i+1], "DYNAMIC_PLRTA_STAR") || !strcmp(argv[i+1], "7"))
+                obstacle.setMode(7);
+            else if (!strcmp(argv[i+1], "DYNAMIC_LSS_LRTA_FHAT") || !strcmp(argv[i+1], "8"))
+                obstacle.setMode(8);
+            else if (!strcmp(argv[i+1], "DYNAMIC_PLRTA_STAR_FHAT") || !strcmp(argv[i+1], "9"))
+                obstacle.setMode(9);
+            else if (!strcmp(argv[i+1], "DYNAMIC_PLRTA_STAR_MOD") || !strcmp(argv[i+1], "10"))
+                obstacle.setMode(10);
+            else if (!strcmp(argv[i+1], "DYNAMIC_PLRTA_STAR_FHAT_MOD") || !strcmp(argv[i+1], "11"))
+                obstacle.setMode(11);
+            else if (!strcmp(argv[i+1], "12"))
+                obstacle.setMode(12);
+            else if (!strcmp(argv[i+1], "13"))
+                obstacle.setMode(13);
+            else
+                obstacle.setMode(0);
+        }
+        else if(!strcmp(argv[i], "-l"))
+        {
+            obstacle.setLookAhead(stoi(argv[i+1]));
+        }
+        else if(!strcmp(argv[i], "-r"))
+        {
+            obstacle.setRate(stoi(argv[i+1]));
+        }
+        else if(!strcmp(argv[i], "-help"))
+        {
+            cerr << "<-r int> updaterate\n<-l int> lookahead size\n<-a int/string> algorithm\n<-help> for help" << endl;
+            exit(-1);
+        }
     }
 
     // double maxsp, minsp, r, x, y;

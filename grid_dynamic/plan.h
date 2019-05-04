@@ -17,6 +17,7 @@ class Plan
 {
   protected:
     int LOOKAHEAD = 1000, Collision_cost = 200, decay = 20; //7 8 36
+    double std = 1, stdi = 0.1;
     int boardw, boardh, startTime, startDynamic = 0, movingSteps = 1;
     double sqrt2 = 1.41421356237, check_interval = 0.05;
     float *htable;
@@ -40,6 +41,7 @@ class Plan
     float *dtable, *derrtable;
 
   public:
+    int max_time = 0;
     // Default constructor
     Plan()
     {
@@ -95,8 +97,6 @@ class Plan
     void setDynamic(vector<DynamicObstacle> &d)
     {
         dynamicObstacles = d;
-        
-       
     };
 
     virtual unordered_set<State> getSTATE()
@@ -157,48 +157,42 @@ class Plan
         return boardw * y + x;
     }
 
+    double get_probability(DynamicObstacle &dynamic, double x, double y, double t)
+    {
+        double dhead = dynamic.estimate_h, dspeed = dynamic.estimate_s;
+        double mx = cos(dhead) * dspeed * t + dynamic.x, my = sin(dhead) * dspeed * t + dynamic.y;
+        double stderr = std + stdi * t;
+        double variance = stderr * stderr;
+        double dx = x-mx,dy = y-my;
+        // double pxy = ((x - mx) * (y - my)) / variance;
+        double first = 1 / (2.0 * M_PI * variance );
+        double second = -1 / 2.0;
+        double third = ((dx*dx + dy*dy)) / variance;
+        return first * exp(second* third);
+    }
+
     int cost_d(State *ps, State *s)
     {
-        // int cx = ps->x, cy = ps->y, fx = s->x, fy = s->y;
-        // int distance = sqrt((cx - fx) * (cx - fx) + (cy - fy) * (cy - fy));
-        // int factor1 = int(distance / check_interval);
-        // double factor = factor1;
-        // double diffx = (fx - cx) / factor, diffy = (fy - cy) / factor;
-        
-        // int dt = s->time - startTime;
         int factor1;
-        double timeinterval =  factor1 = 10;
+        double timeinterval = factor1 = 10;
         int cx = ps->x, cy = ps->y, fx = s->x, fy = s->y, dt = s->time - startTime;
         double diffx = (fx - cx) / timeinterval, diffy = (fy - cy) / timeinterval;
-
         double p_collide = 0;
         for (int i = 1; i <= factor1; i++)
         {
             double x = cx + diffx * i, y = cy + diffy * i;
             double temp_p_collide = 0, p_not_collide = 1;
-            for (DynamicObstacle &dynamic : dynamicObstacles)
-            {
-                
-                double dhead = dynamic.estimate_h, dspeed = dynamic.estimate_s;
-                int dyt = (dt > 10) ? 10 : dt;
-                double dtime = (dt - 1 + i / timeinterval);
-                double dyx = cos(dhead) * dspeed * dtime + dynamic.x, dyy = sin(dhead) * dspeed * dtime + dynamic.y;
-                double powt = pow(1.3, dyt); //change 1.2 to any
-                double range = 0.5 * powt;
-                double dfx = dyx - x, dfy = dyy - y;
-                if (dfx * dfx + dfy * dfy < range * range)
-                {
-                    p_not_collide *= (1 - 1 / powt);
-                }
-            }
-            temp_p_collide = 1 - p_not_collide;
-            if (temp_p_collide > p_collide)
-            {
-                p_collide = temp_p_collide;
-            }
-        }
-      
 
+            for (DynamicObstacle &dynamic : dynamicObstacles)
+                p_not_collide *= (1 - get_probability(dynamic,x,y,(dt - 1 + i / timeinterval)));
+
+            temp_p_collide = 1 - p_not_collide;
+
+            if (temp_p_collide > p_collide)
+                p_collide = temp_p_collide;
+        }
+        if(p_collide > 1)
+            p_collide = 1;
         return p_collide * Collision_cost;
     }
 

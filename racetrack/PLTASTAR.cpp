@@ -6,7 +6,7 @@ using namespace std;
 
 #define DEBUG false
 #define DEBUGCHILD false
-#define DEBUGTABLE true
+#define DEBUGTABLE false
 
 int PLTASTAR::ASTAR(State requestStart)
 {
@@ -39,6 +39,7 @@ int PLTASTAR::ASTAR(State requestStart)
         }
         else
         {
+            elem->pred.clear();
             elem->cost_s = DBL_MAX;
             elem->cost_d = DBL_MAX;
             // elem->h_d = (elem->h_d > decay) ? elem->h_d - decay : 0;
@@ -80,11 +81,15 @@ int PLTASTAR::ASTAR(State requestStart)
                 int dx = state->dx + i, dy = state->dy + j;
                 dummy->set(state->x + dx, state->y + dy, dx, dy, state->time + 1);
 
+        
                 if (!checkValid(state, dummy))
+                {
                     find_avaliable_state(state, dummy, dx, dy);
+                }
 
                 State_PLRTA *child_state = expandState[dummy];
 
+                
                 if (!close.find(dummy))
                 {
                     if (!child_state)
@@ -92,6 +97,11 @@ int PLTASTAR::ASTAR(State requestStart)
                         child_state = new State_PLRTA(dummy->x, dummy->y, dx, dy, DBL_MAX,DBL_MAX,0, 0, state->time + 1);
                         expandState.insert(child_state);
                     }
+                    if (DEBUG && DEBUGCHILD)
+                cout << "\033[0;37m"
+                 << "CHILD: "
+                 << "\033[0;30m" << *child_state << endl;
+
 
                     child_state->h_s = h_value_static(child_state);
                     double dcost = state->cost_d + cost_d(state,child_state);
@@ -118,6 +128,8 @@ int PLTASTAR::ASTAR(State requestStart)
                         }
                     }
                 }
+                if(child_state->h_s >100000000)
+                    exit(0);
 
                 child_state->pred.emplace(state->x, state->y, state->dx, state->dy, state->time);
             }
@@ -180,6 +192,14 @@ int PLTASTAR::update_h_static(PQueue<State_PLRTA *> open1, HashSet<State_PLRTA *
                 else
                 {
                     open.moveUP(state->qindex);
+                }
+            }
+            else
+            {
+                State_PLRTA_Static *state = close[dummy_static];
+                for (auto i : state1->pred)
+                {
+                    state->pred_static.emplace(i.x, i.y,i.dx,i.dy);
                 }
             }
         }
@@ -362,6 +382,7 @@ int PLTASTAR::plan(State requestStart)
             cout << "\033[0;32m"
                  << "CHOOSE: "
                  << "\033[0;30m" << *s << endl;
+        s->tempc = s->cost_d;
         path.push_back(*s);
         s = s->parent;
     }

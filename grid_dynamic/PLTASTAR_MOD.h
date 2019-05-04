@@ -238,6 +238,17 @@ class PLTASTAR_MOD : public Plan
         return ret;
     };
 
+
+    static unsigned int compare_mod(State_PLRTA_MOD *&s1, State_PLRTA_MOD *&s2)
+    {
+        return s1->f() < s2->f();
+    };
+
+    static unsigned int compare_mod(State_PLRTA_MOD &s1, State_PLRTA_MOD &s2)
+    {
+        return s1.f() < s2.f();
+    };
+
     
 
     static unsigned int compare(State_PLRTA_MOD *&s1, State_PLRTA_MOD *&s2)

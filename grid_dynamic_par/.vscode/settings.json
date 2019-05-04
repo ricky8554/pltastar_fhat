@@ -1,0 +1,19 @@
+{
+    "files.associations": {
+        "iostream": "cpp",
+        "ostream": "cpp",
+        "array": "cpp",
+        "deque": "cpp",
+        "unordered_map": "cpp",
+        "unordered_set": "cpp",
+        "vector": "cpp",
+        "initializer_list": "cpp",
+        "string_view": "cpp",
+        "*.tcc": "cpp",
+        "utility": "cpp",
+        "istream": "cpp",
+        "future": "cpp",
+        "chrono": "cpp",
+        "mutex": "cpp"
+    }
+}

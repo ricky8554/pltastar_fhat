@@ -41,10 +41,11 @@ int PLTASTAR_MOD::ASTAR(State requestStart)
         {
             elem->cost_s = DBL_MAX;
             elem->cost_d = DBL_MAX;
-            // elem->h_d = (elem->h_d > decay) ? elem->h_d - decay : 0;
+            elem->h_d = (elem->h_d > decay) ? elem->h_d - decay : 0;
             elem->h_s = h_value_static(elem);
         }
     }
+    
 
     //clear open close & open check
     open.clear();
@@ -65,10 +66,12 @@ int PLTASTAR_MOD::ASTAR(State requestStart)
     do
     {
         state = open.pop();
+        if(max_time && max_time == state->time)
+            break;
         if (DEBUG)
-            cout << "\033[0;33m"
+            cout << "\033[0;33m" 
                  << "STATES: "
-                 << "\033[0;30m" << *state << endl;
+                 << "\033[0;30m" << *state << " exp " << expansions << endl;
         opencheck.erase(state);
         close.insert(state);
         expansions += 1;
@@ -254,20 +257,17 @@ int PLTASTAR_MOD::update_h_dynamic()
 {
     for (auto it : close)
     {
-        State_PLRTA_MOD * p = it.key;
-        p->h_d = DBL_MAX;
-        p->h_s = h_value_static(p);
+        it.key->h_d = DBL_MAX;
+        it.key->h_s = h_value_static(it.key);
     }
-
-    for(int i = 0; i< open.size(); i++)
+    for (int i = 0; i < open.size(); i++)
     {
-        State_PLRTA_MOD * p = open[i];
+        State_PLRTA_MOD *p = open[i];
         p->h_s = h_value_static(p);
     }
 
-    // open.setUpCompare(&compare2);
-    open.setUpCompare(&compare);
-
+    open.setUpCompare(&compare_mod);
+    
     while (close.size() != 0 && !open.empty())
     {
         State_PLRTA_MOD *state = open.pop();
@@ -280,12 +280,12 @@ int PLTASTAR_MOD::update_h_dynamic()
             State_PLRTA_MOD *pred_state = close[dummy];
             if (pred_state)
             {
-                // double dcost = cost_d(pred_state) + state->h_d;
                 double dcost = cost_d(pred_state,state) + state->f();
+                // double dcost = cost_d(pred_state) + state->f();
                 if (pred_state->f() > dcost)
                 {
-                    // pred_state->h_d = dcost;
                     pred_state->h_d = dcost - pred_state->h_s - pred_state->cost_d - pred_state->cost_s;
+                    // pred_state->h_d = dcost - pred_state->h_s - pred_state->cost_d - pred_state->cost_s;
                     if (!opencheck.find(pred_state))
                     {
                         opencheck.insert(pred_state);
@@ -365,6 +365,7 @@ int PLTASTAR_MOD::plan(State requestStart)
             cout << "\033[0;32m"
                  << "CHOOSE: "
                  << "\033[0;30m" << *s << endl;
+        s->tempc = s->cost_d;
         path.push_back(*s);
         s = s->parent;
     }

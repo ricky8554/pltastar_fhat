@@ -34,6 +34,7 @@ int Lss_Lrta_Fhat::ASTAR(State requestStart)
         }
         else
         {
+            elem->pred.clear();
             elem->cost = DBL_MAX;
         }
     }
@@ -228,6 +229,7 @@ int Lss_Lrta_Fhat::plan(State requestStart)
     while (s != start)
     {
         // cout << "\033[0;32m" << "CHOOSE: " << "\033[0;30m" << *s << endl;
+        s->tempc = s->cost;
         path.push_back(*s);
         s = s->parent;
     }

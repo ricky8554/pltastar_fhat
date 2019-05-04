@@ -39,6 +39,7 @@ int PLTASTAR_MOD::ASTAR(State requestStart)
         }
         else
         {
+            elem->pred.clear();
             elem->cost_s = DBL_MAX;
             elem->cost_d = DBL_MAX;
             // elem->h_d = (elem->h_d > decay) ? elem->h_d - decay : 0;
@@ -116,7 +117,8 @@ int PLTASTAR_MOD::ASTAR(State requestStart)
                         }
                     }
                 }
-
+                if(child_state->h_s >100000000)
+                    exit(0);
                 child_state->pred.emplace(state->x, state->y, state->dx, state->dy, state->time);
             }
         }
@@ -178,6 +180,14 @@ int PLTASTAR_MOD::update_h_static(PQueue<State_PLRTA_MOD *> open1, HashSet<State
                 else
                 {
                     open.moveUP(state->qindex);
+                }
+            }
+            else
+            {
+                State_PLRTA_MOD_Static *state = close[dummy_static];
+                for (auto i : state1->pred)
+                {
+                    state->pred_static.emplace(i.x, i.y,i.dx,i.dy);
                 }
             }
         }
@@ -367,6 +377,7 @@ int PLTASTAR_MOD::plan(State requestStart)
             cout << "\033[0;32m"
                  << "CHOOSE: "
                  << "\033[0;30m" << *s << endl;
+        s->tempc = s->cost_d;
         path.push_back(*s);
         s = s->parent;
     }

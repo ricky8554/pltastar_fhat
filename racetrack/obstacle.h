@@ -6,6 +6,7 @@
 #include <thread>
 #include <mutex>
 #include <cmath>
+// #include "base_a.h"
 #include "LSS_LRTA.h"
 #include "LSS_LRTA_FHAT.h"
 #include "PLTASTAR.h"
@@ -15,8 +16,6 @@
 #include "state.h"
 
 using namespace std;
-
-#define rate 10
 #define bord 100
 
 
@@ -30,16 +29,19 @@ class Obstacle
     vector<State> path;
     State start, goal;
     Plan* planner = 0;
+    double threshold_factor = 1.1;
+    int dynamic_path_change = 0;
+    int max_check = 100;
     int termination;
     int bordw;
     int bordh;
-    int updaterate;
+    int updaterate = 300;
     int plan;
     int index;
     int mode;//0 is lsslrtastar 1 is plrtastar
     bool mode_dynamic = false;
     int dynamic_lookahead = 1;
-    int node_per_step = 2000;
+    int node_per_step = 1000;
     void MoveObstacle();
     
     unordered_set<State> map;
@@ -47,22 +49,23 @@ class Obstacle
   public:
     // Default constructor
     Obstacle()
-        : termination(1), updaterate(rate), plan(1),index(0)
+        : termination(1), plan(1),index(0)
     {
         srand(time(NULL));
     };
 
     // Explicit constructor
     Obstacle(vector<DynamicObstacle> dynamicObstacles, unordered_set<StaticObstacle> staticObstacles)
-        : dynamicObstacles(dynamicObstacles), staticObstacles(staticObstacles), termination(1), updaterate(rate), plan(1),index(0)
+        : dynamicObstacles(dynamicObstacles), staticObstacles(staticObstacles), termination(1), plan(1),index(0)
     {
         srand(time(NULL));
     };
 
     int MoveObstacle(int node,int LookAhead);
     
-
-    void addDynamicObstacle(DynamicObstacle);
+    double get_probability(DynamicObstacle &dynamic, double x, double y, double t);
+    
+    void addDynamicObstacle(DynamicObstacle &d);
 
     void addStaticObstacle(double x1, double y1);
 
@@ -75,6 +78,16 @@ class Obstacle
     {
         bordw = w; 
         bordh = h;
+    };
+
+    void setRate(int r)
+    {
+        updaterate = r;
+    };
+
+    void setLookAhead(int l)
+    {
+        node_per_step = l;
     };
 
 
@@ -91,7 +104,7 @@ class Obstacle
 
     int collisionChecking(int index, double radius, int x, int y);
 
-    vector<Dynamicxy> getDynamicObstacle();
+    vector<DynamicObstacle> getDynamicObstacle();
 
     unordered_set<StaticObstacle> getStaticObstacle();
 
@@ -104,6 +117,8 @@ class Obstacle
         return a;
     }
 
+    int get_cost(State &s, State ps);
+
     vector<DynamicObstacle> getDynamicObstacle1()
     {
         return dynamicObstacles;
@@ -115,6 +130,8 @@ class Obstacle
     };
 
     void initialize(int LOOKAHEAD);
+
+    int replan();
 
 
     void update(bool graph_mode);

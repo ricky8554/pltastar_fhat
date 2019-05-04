@@ -18,6 +18,8 @@ class State_PLRTA_FHAT : public State
 {
   public:
     mutable double cost_s, cost_d, h_s, h_d, derr, h_error, d;
+    int frontier_time;
+    double f_c;
     State_PLRTA_FHAT *parent;
 
     State_PLRTA_FHAT(double x, double y)
@@ -237,13 +239,16 @@ class PLTASTAR_FHAT : public Plan
     mutex mtx;
 
   private:
-    double herr = 0, derr = 0;
+    double herr = 0, derr = 0, herr_new= 0;
+    double qtime_avg,heurristic_factor;
+    unsigned long accumulate_hurristic, post_accumulate_hurristic;
     State_PLRTA_FHAT *start, *goal, *dummy;
     State_PLRTA_FHAT_Static *dummy_static;
     PQueue<State_PLRTA_FHAT *> open;
     PQueue<State_PLRTA_FHAT *> goalQ;
     HashSet<State_PLRTA_FHAT *> opencheck = HashSet<State_PLRTA_FHAT *>(&Hash, &equal, 0);
     HashSet<State_PLRTA_FHAT *> close = HashSet<State_PLRTA_FHAT *>(&Hash, &equal, 0);
+    // unordered_map<int,HashSet<State_PLRTA_FHAT *>> expandState;
     HashSet<State_PLRTA_FHAT *> expandState = HashSet<State_PLRTA_FHAT *>(&Hash, &equal, 0);
     static hash<int> hashf;
 
@@ -274,6 +279,16 @@ class PLTASTAR_FHAT : public Plan
         return s1.fhat() < s2.fhat();
     };
 
+    static unsigned int comparef(State_PLRTA_FHAT *&s1, State_PLRTA_FHAT *&s2)
+    {
+        return s1->f() < s2->f();
+    };
+
+    static unsigned int comparef(State_PLRTA_FHAT &s1, State_PLRTA_FHAT &s2)
+    {
+        return s1.f() < s2.f();
+    };
+
     static unsigned int compare1(State_PLRTA_FHAT *&s1, State_PLRTA_FHAT *&s2)
     {
         return s1->h_s + s1->h_d + s1->h_error < s2->h_s + s2->h_d + s2->h_error; //chage to h_hat?
@@ -292,6 +307,16 @@ class PLTASTAR_FHAT : public Plan
     static unsigned int compare2(State_PLRTA_FHAT &s1, State_PLRTA_FHAT &s2)
     {
         return s1.h_d < s2.h_d; //chage to h_hat?
+    };
+
+    static unsigned int comparet(State_PLRTA_FHAT *&s1, State_PLRTA_FHAT *&s2)
+    {
+        return s1->time > s2->time; //chage to h_hat?
+    };
+
+    static unsigned int comparet(State_PLRTA_FHAT &s1, State_PLRTA_FHAT &s2)
+    {
+        return s1.time > s2.time; //chage to h_hat?
     };
 
     static unsigned int compare_static(State_PLRTA_FHAT *&s1, State_PLRTA_FHAT *&s2)

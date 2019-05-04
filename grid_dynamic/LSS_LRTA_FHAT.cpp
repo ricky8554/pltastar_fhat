@@ -60,6 +60,8 @@ int Lss_Lrta_Fhat::ASTAR(State requestStart)
     {
 
         state = open.pop();
+        if(max_time && max_time == state->time)
+            break;
         opencheck.erase(state);
         close.insert(state);
         expansions += 1;

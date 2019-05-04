@@ -54,6 +54,8 @@ struct hash<point_t>
         size_t ret = 0;
         ret ^= hashf(c.x) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         ret ^= hashf(c.y) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(c.dx) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(c.dy) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         ret ^= hashf(c.time) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         return ret;
     }
@@ -64,10 +66,13 @@ class State
 {
   public:
     int x, y, dx, dy, qindex, depth;
+    double tempc;
     mutable int time;
     double fakeh, fakec;
     std::unordered_set<point_t> pred;
 
+    State(int x, int y, int c)
+        : x(x), y(y), tempc(c), time(0){};
     State(int x, int y, int dx, int dy)
         : x(x), y(y), dx(dx), dy(dy), time(0){};
     State(int x, int y, int dx, int dy, int time)
@@ -113,6 +118,15 @@ class State
         if (x == s.x && y == s.y && dx == s.dx && dy == s.dy && this->time == s.time)
             return true;
         return false;
+    }
+
+    bool operator>(const State &s) const
+    {
+        return tempc > s.tempc;
+    }
+    bool operator<(const State &s) const
+    {
+        return tempc < s.tempc;
     }
 
     virtual const double f() const
@@ -228,9 +242,7 @@ struct point
 
     bool operator==(const point &s) const
     {
-        if (x == s.x && y == s.y)
-            return true;
-        return false;
+        return (x == s.x && y == s.y && dx == s.dx && dy == s.dy);
     }
 
     void set(int x1, int y1, int dx1, int dy1)
@@ -265,6 +277,8 @@ struct hash<State>
         size_t ret = 0;
         ret ^= hashf(c.x) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         ret ^= hashf(c.y) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(c.dx) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+        ret ^= hashf(c.dy) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         ret ^= hashf(c.time) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
         return ret;
     }

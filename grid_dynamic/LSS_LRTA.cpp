@@ -57,6 +57,8 @@ int Lss_Lrta::ASTAR(State requestStart)
     {
 
         state = open.pop();
+        if(max_time && max_time == state->time)
+            break;
         // cout << "\033[0;33m" << "STATE: " << "\033[0;30m" << *state << endl;
 
         opencheck.erase(state);
